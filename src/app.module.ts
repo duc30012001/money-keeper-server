@@ -1,11 +1,16 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import * as jwt from 'jsonwebtoken';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import appConfig from './config/app.config';
 import { DatabaseConfigService } from './config/database.config';
 import { envValidationSchema } from './config/env.validation.schema';
+import { AuthModule } from './modules/auth/auth.module';
+import { KeysModule } from './modules/keys/keys.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
 	imports: [
@@ -14,11 +19,31 @@ import { envValidationSchema } from './config/env.validation.schema';
 			load: [appConfig],
 			validationSchema: envValidationSchema,
 		}),
+		JwtModule.registerAsync({
+			imports: [ConfigModule],
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService): JwtModuleOptions => ({
+				secret:
+					configService.get<string>('jwt.privateKey') ||
+					'defaultPrivateKey',
+				signOptions: {
+					// Provide a default value and cast the result as Algorithm
+					algorithm: (configService.get<string>('jwt.algorithm') ||
+						'RS256') as jwt.Algorithm,
+					expiresIn:
+						configService.get<string>('jwt.accessTokenExpiresIn') ||
+						'1h',
+				},
+			}),
+		}),
 		TypeOrmModule.forRootAsync({
 			imports: [ConfigModule],
 			useClass: DatabaseConfigService,
 		}),
 		// ... other modules
+		UserModule,
+		AuthModule,
+		KeysModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
