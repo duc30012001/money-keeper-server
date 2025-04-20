@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+    api:
+        build: .
+        # pull the port number from $APP_PORT for both host and container
+        ports:
+            - '${APP_PORT}:${APP_PORT}'
+        env_file:
+            - .env
+        command: yarn start:prod
+        restart: unless-stopped
