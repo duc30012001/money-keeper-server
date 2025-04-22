@@ -1,6 +1,7 @@
 // src/modules/auth/auth.service.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { Request } from 'express';
 import { AuthMessages } from 'src/common/messages';
 import { JwtPayload } from 'src/common/types/jwt-payload.interface';
 import { JwtService } from '../jwt/jwt.service';
@@ -24,8 +25,8 @@ export class AuthService {
 	/** Validate credentials and issue tokens */
 	async signin(dto: SigninDto) {
 		const user = await this.userService.getOneByEmail(dto.email);
-		if (!user)
-			throw new UnauthorizedException(AuthMessages.INVALID_CREDENTIALS);
+		if (!user.isActive)
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 
 		const valid = await argon2.verify(user.password, dto.password);
 		if (!valid)
@@ -49,9 +50,8 @@ export class AuthService {
 
 		// Optionally verify the user still exists / hasn’t been disabled
 		const user = await this.userService.getOneById(payload.sub);
-		if (!user) {
-			throw new UnauthorizedException('User no longer exists');
-		}
+		if (!user.isActive)
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 
 		const newAccess = await this.jwt.generateAccessToken({
 			sub: user.id,
@@ -63,5 +63,18 @@ export class AuthService {
 		});
 
 		return new GetTokenResponse(newAccess, newRefresh);
+	}
+
+	async me(req: Request) {
+		const userId = req.user?.sub;
+
+		if (!userId)
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
+
+		const user = await this.userService.getOneById(userId);
+		if (!user.isActive)
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
+
+		return user;
 	}
 }
