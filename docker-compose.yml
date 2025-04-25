@@ -6,6 +6,6 @@ services:
         ports:
             - '${APP_PORT}:${APP_PORT}'
         env_file:
-            - .env
+            - .env.production.local
         command: yarn start:prod
         restart: unless-stopped

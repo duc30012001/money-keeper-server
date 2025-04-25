@@ -40,3 +40,31 @@ Money Keeper Server built with **NestJS** and **TypeORM**. It helps you track yo
     git clone https://github.com/duc30012001/money-keeper-server.git
     cd money-keeper-server
     ```
+
+2. **Install dependencies:**
+
+    ```bash
+    yarn install
+    ```
+
+3. **Setup Environment Variables:**
+
+    Copy the `.env.example` file to `.env` and adjust values as needed.
+
+    ```bash
+    cp .env.example .env
+    ```
+
+4. **Build and Run Docker:**
+
+    To build and run the application with Docker, use the following command:
+
+    ```bash
+    docker compose --env-file .env.production.local up -d
+    ```
+
+    This will build the Docker container using the configuration in the `.env.production.local` file and run it in the background.
+
+## Usage
+
+Once the server is up and running, you can access it through your configured endpoint. You can interact with the API to add, update, and delete transactions, view account balances, and generate reports.
