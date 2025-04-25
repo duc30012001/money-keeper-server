@@ -2,7 +2,7 @@
 import {
 	ConflictException,
 	Injectable,
-	NotFoundException,
+	UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hash } from 'argon2';
@@ -12,7 +12,7 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
-import { AuthMessages, GeneralMessages } from 'src/common/messages';
+import { AuthMessages } from 'src/common/messages';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { ListUserDto } from './dtos/get-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
@@ -47,7 +47,7 @@ export class UserService {
 		const toSave = await this.userRepo.preload({ id, ...dto });
 		if (!toSave) {
 			// now TS knows toSave is defined after this point
-			throw new NotFoundException(GeneralMessages.NOT_FOUND);
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 		}
 
 		// 2. Duplicate‑email check (if you still need it)
@@ -74,7 +74,7 @@ export class UserService {
 	async getOneById(id: string): Promise<User> {
 		const user = await this.userRepo.findOne({ where: { id } });
 		if (!user) {
-			throw new NotFoundException(GeneralMessages.NOT_FOUND);
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 		}
 		return user;
 	}
@@ -86,7 +86,7 @@ export class UserService {
 	async getOneByEmail(email: string): Promise<User> {
 		const user = await this.userRepo.findOne({ where: { email } });
 		if (!user) {
-			throw new NotFoundException(GeneralMessages.NOT_FOUND);
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 		}
 		return user;
 	}

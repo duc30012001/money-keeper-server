@@ -9,6 +9,7 @@ import appConfig from './config/app.config';
 import { DatabaseConfigService } from './config/database.config';
 import { envValidationSchema } from './config/env.validation.schema';
 import { AuthModule } from './modules/auth/auth.module';
+import { InitModule } from './modules/init/init.module';
 import { KeysModule } from './modules/keys/keys.module';
 import { UserModule } from './modules/user/user.module';
 
@@ -44,6 +45,7 @@ import { UserModule } from './modules/user/user.module';
 		UserModule,
 		AuthModule,
 		KeysModule,
+		InitModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
