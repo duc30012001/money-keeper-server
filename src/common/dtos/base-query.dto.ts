@@ -1,4 +1,5 @@
 // src/common/dtos/base-query.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
@@ -9,6 +10,12 @@ export class BaseQueryDto {
 	keyword?: string;
 
 	/** 1‑based page number */
+	@ApiProperty({
+		description: 'Page number',
+		required: false,
+		default: 1,
+		minimum: 1,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
@@ -16,6 +23,12 @@ export class BaseQueryDto {
 	page: number = 1;
 
 	/** Items per page */
+	@ApiProperty({
+		description: 'Number of items per page',
+		required: false,
+		default: 10,
+		minimum: 1,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()

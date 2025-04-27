@@ -10,11 +10,12 @@ import {
 	Query,
 	UseInterceptors,
 } from '@nestjs/common';
+
 import { ResponseDto } from 'src/common/dtos/response.dto';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { ListUserDto } from './dtos/get-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
-import { User } from './entities/user.entity';
+import { User } from './user.entity';
 import { UserService } from './user.service';
 
 @UseInterceptors(ClassSerializerInterceptor)

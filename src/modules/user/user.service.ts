@@ -16,7 +16,7 @@ import { AuthMessages } from 'src/common/messages';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { ListUserDto } from './dtos/get-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
-import { User } from './entities/user.entity';
+import { User } from './user.entity';
 
 @Injectable()
 export class UserService {
