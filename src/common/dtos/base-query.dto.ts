@@ -1,12 +1,18 @@
 // src/common/dtos/base-query.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class BaseQueryDto {
 	/** Full‑text search keyword */
+	@ApiProperty({
+		description: 'Full-text search keyword',
+		required: false,
+		example: 'search term',
+	})
 	@IsOptional()
 	@IsString()
+	@Transform(({ value }: { value: string | undefined }) => value?.trim())
 	keyword?: string;
 
 	/** 1‑based page number */
