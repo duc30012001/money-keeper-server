@@ -18,9 +18,9 @@ import {
 } from 'src/common/dtos/response.dto';
 import { AccountType } from './account-type.entity';
 import { AccountTypeService } from './account-type.service';
-import { CreateAccountTypeDto } from './dto/create-account-type.dto';
-import { UpdateAccountTypeDto } from './dto/update-account-type.dto';
-import { UpdateSortOrderDto } from './dto/update-sort-order.dto';
+import { CreateAccountTypeDto } from './dtos/create-account-type.dto';
+import { UpdateAccountTypeDto } from './dtos/update-account-type.dto';
+import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
 
 @ApiTags('Account Types')
 @Controller('account-types')

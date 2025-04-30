@@ -9,16 +9,25 @@ export class DatabaseConfigService implements TypeOrmOptionsFactory {
 
 	createTypeOrmOptions(): TypeOrmModuleOptions {
 		return {
-			type: 'postgres', // Type of database
+			type: 'postgres',
 			host: this.configService.get<string>('DB_HOST'),
 			port: this.configService.get<number>('DB_PORT') || 5432,
 			username: this.configService.get<string>('DB_USERNAME'),
 			password: this.configService.get<string>('DB_PASSWORD'),
 			database: this.configService.get<string>('DB_DATABASE'),
+
+			// Entities
 			entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-			namingStrategy: new SnakeNamingStrategy(),
 			autoLoadEntities: true,
-			synchronize: true, // Note: set to false in production
+
+			// Naming strategy
+			namingStrategy: new SnakeNamingStrategy(),
+
+			// Tắt synchronize, dùng migration
+			synchronize: false,
+			migrationsRun: true,
+			migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+			migrationsTableName: 'migrations',
 		};
 	}
 }

@@ -11,9 +11,9 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { AccountType } from './account-type.entity';
-import { CreateAccountTypeDto } from './dto/create-account-type.dto';
-import { UpdateAccountTypeDto } from './dto/update-account-type.dto';
-import { UpdateSortOrderDto } from './dto/update-sort-order.dto';
+import { CreateAccountTypeDto } from './dtos/create-account-type.dto';
+import { UpdateAccountTypeDto } from './dtos/update-account-type.dto';
+import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
 
 @Injectable()
 export class AccountTypeService {
@@ -47,7 +47,7 @@ export class AccountTypeService {
 			where: { id },
 		});
 		if (!accountType) {
-			throw new NotFoundException(`AccountType with ID ${id} not found`);
+			throw new NotFoundException(`Account Type with ID ${id} not found`);
 		}
 		return accountType;
 	}
@@ -66,7 +66,7 @@ export class AccountTypeService {
 		);
 		if (existingAccountType) {
 			throw new ConflictException(
-				`AccountType with name '${createAccountTypeDto.name}' already exists`,
+				`Account Type with name '${createAccountTypeDto.name}' already exists`,
 			);
 		}
 
@@ -90,7 +90,7 @@ export class AccountTypeService {
 			);
 			if (existingAccountType) {
 				throw new ConflictException(
-					`AccountType with name '${updateAccountTypeDto.name}' already exists`,
+					`Account Type with name '${updateAccountTypeDto.name}' already exists`,
 				);
 			}
 		}
