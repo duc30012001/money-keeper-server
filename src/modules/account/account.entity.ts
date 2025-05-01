@@ -5,7 +5,7 @@ import { AccountType } from '../account-type/account-type.entity';
 
 @Entity('accounts')
 export class Account extends BaseEntity {
-	@Column({ name: 'name' })
+	@Column({ name: 'name', unique: true })
 	@IsNotEmpty()
 	@IsString()
 	name: string;
@@ -15,7 +15,23 @@ export class Account extends BaseEntity {
 	@IsString()
 	description: string | null;
 
-	@Column({ name: 'balance', type: 'float', default: 0 })
+	@Column({
+		name: 'initial_balance',
+		type: 'decimal',
+		precision: 18,
+		// scale: 2,
+		default: 0,
+	})
+	@IsNumber()
+	initialBalance: number;
+
+	@Column({
+		name: 'balance',
+		type: 'decimal',
+		precision: 18,
+		// scale: 2,
+		default: 0,
+	})
 	@IsNumber()
 	balance: number;
 

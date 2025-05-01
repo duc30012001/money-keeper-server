@@ -4,18 +4,19 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOneOptions, In, Like, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
-import { AccountTypeService } from '../account-type/account-type.service';
-import { Account } from './account.entity';
-import { CreateAccountDto } from './dtos/create-account.dto';
-import { FindAccountDto } from './dtos/find-account.dto';
-import { UpdateAccountDto } from './dtos/update-account.dto';
-import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
+import { AccountTypeService } from '../../account-type/account-type.service';
+import { ActionType } from '../../category/enums/action-type.enum';
+import { Account } from '../account.entity';
+import { CreateAccountDto } from '../dtos/create-account.dto';
+import { FindAccountDto } from '../dtos/find-account.dto';
+import { UpdateAccountDto } from '../dtos/update-account.dto';
+import { UpdateSortOrderDto } from '../dtos/update-sort-order.dto';
 
 @Injectable()
 export class AccountService {
@@ -30,36 +31,35 @@ export class AccountService {
 	): Promise<PaginatedResponseDto<Account>> {
 		const { skip, pageSize, page, keyword, accountTypeIds } =
 			findAccountDto;
-		const where: FindOneOptions<Account>['where'] = {};
 
+		const qb = this.accountRepository
+			.createQueryBuilder('account')
+			// join the AccountType relation...
+			.leftJoin('account.accountType', 'accountType')
+			// ...but only select the three columns you care about
+			.addSelect([
+				'accountType.id',
+				'accountType.name',
+				'accountType.sortOrder',
+			]);
+
+		// apply your filters
 		if (keyword) {
-			where.name = Like(`%${keyword}%`);
+			qb.andWhere('account.name ILIKE :kw', { kw: `%${keyword}%` });
+		}
+		if (accountTypeIds?.length) {
+			qb.andWhere('accountType.id IN (:...ids)', { ids: accountTypeIds });
 		}
 
-		if (accountTypeIds) {
-			where.accountType = { id: In(accountTypeIds) };
-		}
+		// ordering: first by accountType.sortOrder, then by account.sortOrder
+		qb.orderBy('accountType.sortOrder', 'ASC')
+			.addOrderBy('account.sortOrder', 'ASC')
+			.skip(skip)
+			.take(pageSize);
 
-		const [items, total] = await this.accountRepository.findAndCount({
-			order: {
-				accountType: {
-					sortOrder: 'ASC',
-				},
-				sortOrder: 'ASC',
-			},
-			relations: ['accountType'],
-			where,
-			take: pageSize,
-			skip,
-		});
-
-		const meta: PaginationMeta = {
-			total,
-			page,
-			pageSize,
-			totalPages: Math.ceil(total / pageSize),
-		};
-
+		// run & paginate
+		const [items, total] = await qb.getManyAndCount();
+		const meta = new PaginationMeta({ total, page, pageSize });
 		return new PaginatedResponseDto(items, meta);
 	}
 
@@ -93,7 +93,10 @@ export class AccountService {
 			createAccountDto.accountTypeId,
 		);
 
-		const account = this.accountRepository.create(createAccountDto);
+		const account = this.accountRepository.create({
+			...createAccountDto,
+			balance: createAccountDto.initialBalance,
+		});
 		account.accountType = accountType;
 
 		return this.accountRepository.save(account);
@@ -103,30 +106,50 @@ export class AccountService {
 		id: string,
 		updateAccountDto: UpdateAccountDto,
 	): Promise<Account> {
-		const account = await this.findOne(id);
+		// load existing account (including its accountType relation)
+		const account = await this.accountRepository.findOne({
+			where: { id },
+			relations: ['accountType'],
+		});
+		if (!account) throw new NotFoundException(`Account ${id} not found`);
 
+		// 1) name-uniqueness check
 		if (updateAccountDto.name && updateAccountDto.name !== account.name) {
-			const existingAccount = await this.findByName(
-				updateAccountDto.name,
-			);
-			if (existingAccount) {
+			const existing = await this.findByName(updateAccountDto.name);
+			if (existing) {
 				throw new ConflictException(
 					`Account with name '${updateAccountDto.name}' already exists`,
 				);
 			}
 		}
 
+		// 2) accountType change
 		if (
 			updateAccountDto.accountTypeId &&
 			updateAccountDto.accountTypeId !== account.accountType.id
 		) {
-			const accountType = await this.accountTypeService.findOne(
+			const acctType = await this.accountTypeService.findOne(
 				updateAccountDto.accountTypeId,
 			);
-			account.accountType = accountType;
+			account.accountType = acctType;
 		}
+
+		// 3) initialBalance change → adjust balance by the delta
+		if (
+			updateAccountDto.initialBalance !== undefined &&
+			updateAccountDto.initialBalance !== account.initialBalance
+		) {
+			const delta =
+				updateAccountDto.initialBalance - account.initialBalance;
+			account.balance += delta;
+		}
+
+		// 4) copy over any other fields (including initialBalance)
 		Object.assign(account, updateAccountDto);
+
 		await this.accountRepository.save(account);
+
+		// return fresh entity
 		return this.findOne(id);
 	}
 
@@ -173,5 +196,26 @@ export class AccountService {
 				sortOrder: 'ASC',
 			},
 		});
+	}
+
+	async updateBalance(
+		id: string,
+		amount: number,
+		actionType: ActionType,
+	): Promise<Account> {
+		const account = await this.findOne(id);
+		switch (actionType) {
+			case ActionType.INCOME:
+				account.balance += amount;
+				break;
+			case ActionType.EXPENSE:
+				account.balance -= amount;
+				break;
+			default:
+				// throw new BadRequestException('Invalid action type');
+				break;
+		}
+		await this.accountRepository.save(account);
+		return this.findOne(id);
 	}
 }

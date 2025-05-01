@@ -14,6 +14,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CategoryModule } from './modules/category/category.module';
 import { InitModule } from './modules/init/init.module';
 import { KeysModule } from './modules/keys/keys.module';
+import { TransactionModule } from './modules/transaction/transaction.module';
 import { UserModule } from './modules/user/user.module';
 
 @Module({
@@ -52,6 +53,7 @@ import { UserModule } from './modules/user/user.module';
 		AccountTypeModule,
 		CategoryModule,
 		AccountModule,
+		TransactionModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

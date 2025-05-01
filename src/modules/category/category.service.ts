@@ -84,12 +84,11 @@ export class CategoryService {
 
 		// 7. Trả về kèm metadata
 		const total = allowedNodes.length;
-		const meta: PaginationMeta = {
+		const meta = new PaginationMeta({
 			total,
 			page: 1,
 			pageSize: total,
-			totalPages: 1,
-		};
+		});
 		return new PaginatedResponseDto(trees, meta);
 	}
 

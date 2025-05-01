@@ -20,13 +20,13 @@ export class CreateAccountDto {
 	description?: string;
 
 	@ApiProperty({
-		description: 'Balance of the account',
+		description: 'Initial balance of the account',
 		example: 1000,
 		required: false,
 	})
 	@IsOptional()
 	@IsNumber()
-	balance?: number;
+	initialBalance?: number;
 
 	@ApiProperty({
 		description: 'Sort order of the account',

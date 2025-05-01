@@ -18,11 +18,11 @@ import {
 	ResponseDto,
 } from 'src/common/dtos/response.dto';
 import { Account } from './account.entity';
-import { AccountService } from './account.service';
 import { CreateAccountDto } from './dtos/create-account.dto';
 import { FindAccountDto } from './dtos/find-account.dto';
 import { UpdateAccountDto } from './dtos/update-account.dto';
 import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
+import { AccountService } from './services/account.service';
 
 @ApiTags('Accounts')
 @Controller('accounts')
@@ -31,7 +31,7 @@ export class AccountController {
 	constructor(private readonly accountService: AccountService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Get all account types' })
+	@ApiOperation({ summary: 'Get all accounts' })
 	async findAll(
 		@Query() findAccountDto: FindAccountDto,
 	): Promise<PaginatedResponseDto<Account>> {
@@ -39,10 +39,10 @@ export class AccountController {
 	}
 
 	@Get(':id')
-	@ApiOperation({ summary: 'Get account type by ID' })
+	@ApiOperation({ summary: 'Get account by ID' })
 	@ApiParam({
 		name: 'id',
-		description: 'Account type ID',
+		description: 'Account ID',
 		format: 'uuid',
 	})
 	async findOne(
@@ -53,7 +53,7 @@ export class AccountController {
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Create a new account type' })
+	@ApiOperation({ summary: 'Create a new account' })
 	async create(
 		@Body() createAccountDto: CreateAccountDto,
 	): Promise<ResponseDto<Account>> {
@@ -62,7 +62,7 @@ export class AccountController {
 	}
 
 	@Patch('sort-order')
-	@ApiOperation({ summary: 'Update sort order of all account types' })
+	@ApiOperation({ summary: 'Update sort order of all accounts' })
 	async updateSortOrder(
 		@Body() updateSortOrderDto: UpdateSortOrderDto,
 	): Promise<ResponseDto<Account[]>> {
@@ -72,10 +72,10 @@ export class AccountController {
 	}
 
 	@Patch(':id')
-	@ApiOperation({ summary: 'Update an account type' })
+	@ApiOperation({ summary: 'Update an account' })
 	@ApiParam({
 		name: 'id',
-		description: 'Account type ID',
+		description: 'Account ID',
 		format: 'uuid',
 	})
 	async update(
@@ -87,10 +87,10 @@ export class AccountController {
 	}
 
 	@Delete(':id')
-	@ApiOperation({ summary: 'Delete an account type' })
+	@ApiOperation({ summary: 'Delete an account' })
 	@ApiParam({
 		name: 'id',
-		description: 'Account type ID',
+		description: 'Account ID',
 		format: 'uuid',
 	})
 	async remove(

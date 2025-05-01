@@ -32,12 +32,11 @@ export class AccountTypeService {
 		const pageSize = total;
 		const page = 1;
 
-		const meta: PaginationMeta = {
+		const meta = new PaginationMeta({
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize),
-		};
+		});
 
 		return new PaginatedResponseDto(items, meta);
 	}

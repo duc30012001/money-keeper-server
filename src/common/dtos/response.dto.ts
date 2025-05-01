@@ -15,7 +15,7 @@ export class ResponseDto<T> {
 /**
  * Metadata for paginated responses.
  */
-export interface PaginationMeta {
+export class PaginationMeta {
 	/** Total number of items across all pages. */
 	total: number;
 	/** Current page number (1-based). */
@@ -24,6 +24,21 @@ export interface PaginationMeta {
 	pageSize: number;
 	/** Total number of pages. */
 	totalPages: number;
+
+	constructor({
+		total,
+		page,
+		pageSize,
+	}: {
+		total: number;
+		page: number;
+		pageSize: number;
+	}) {
+		this.total = total;
+		this.page = page;
+		this.pageSize = pageSize;
+		this.totalPages = Math.ceil(total / pageSize);
+	}
 }
 
 /**
