@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	ConflictException,
 	Injectable,
 	NotFoundException,
@@ -10,8 +11,10 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { buildTree, TreeNode } from 'src/utils/build-tree';
 import { Category } from './category.entity';
 import { CreateCategoryDto } from './dtos/create-category.dto';
+import { FindCategoriesDto } from './dtos/find-categories.dto';
 import { UpdateCategoryDto } from './dtos/update-category.dto';
 import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
 
@@ -22,12 +25,65 @@ export class CategoryService {
 		private readonly treeRepo: TreeRepository<Category>,
 	) {}
 
-	/** Lấy cả cây đầy đủ */
-	async findAll(): Promise<PaginatedResponseDto<Category>> {
-		const trees = await this.treeRepo.findTrees({
+	async findAll(
+		query?: FindCategoriesDto,
+	): Promise<PaginatedResponseDto<TreeNode<Category, 'children'>>> {
+		// 1. Xây điều kiện filter từ DTO
+		const { keyword, actionType } = query ?? {};
+
+		// 2. Lấy toàn bộ categories flat kèm relation parent
+		const allCats = await this.treeRepo.find({
 			relations: ['parent'],
+			order: {
+				actionType: 'ASC',
+				sortOrder: 'ASC',
+			},
 		});
-		const total = trees.length;
+
+		// 3. Tách ra những node THOẢ điều kiện filter
+		const matched = allCats.filter((cat) => {
+			if (
+				keyword &&
+				!cat.name.toLowerCase().includes(keyword.toLowerCase())
+			) {
+				return false;
+			}
+			if (actionType?.length && !actionType.includes(cat.actionType)) {
+				return false;
+			}
+			return true;
+		});
+
+		// 4. Thu thập tất cả ancestor của mỗi matched node
+		const idToCat = new Map<string, Category>(
+			allCats.map((c) => [c.id, c]),
+		);
+		const ancestorIds = new Set<string>();
+		for (const node of matched) {
+			let p = node.parent;
+			while (p) {
+				if (ancestorIds.has(p.id)) break;
+				ancestorIds.add(p.id);
+				p = idToCat.get(p.id)?.parent ?? undefined;
+			}
+		}
+
+		// 5. Xác định tập các node được giữ lại (matched + ancestors)
+		const allowedIds = new Set<string>([
+			...matched.map((c) => c.id),
+			...ancestorIds,
+		]);
+		const allowedNodes = allCats.filter((c) => allowedIds.has(c.id));
+
+		// 6. Build tree
+		const trees = buildTree(allowedNodes, {
+			idKey: 'id',
+			parentKey: 'parent',
+			childrenKey: 'children',
+		});
+
+		// 7. Trả về kèm metadata
+		const total = allowedNodes.length;
 		const meta: PaginationMeta = {
 			total,
 			page: 1,
@@ -55,11 +111,32 @@ export class CategoryService {
 	/** Tạo mới, gán parent nếu có và tự động lưu closure-table */
 	async create(dto: CreateCategoryDto): Promise<Category> {
 		// Check duplicate name
-		const dup = await this.treeRepo.findOne({ where: { name: dto.name } });
+		const dup = await this.treeRepo.findOne({
+			where: { name: dto.name },
+		});
 		if (dup) {
 			throw new ConflictException(
 				`Category '${dto.name}' already exists`,
 			);
+		}
+
+		// Check parent's actionType if parent exists
+		let parent: Category | undefined;
+		if (dto.parentId) {
+			const foundParent = await this.treeRepo.findOne({
+				where: { id: dto.parentId },
+			});
+			if (!foundParent) {
+				throw new NotFoundException(
+					`Parent category ${dto.parentId} not found`,
+				);
+			}
+			if (foundParent.actionType !== dto.actionType) {
+				throw new BadRequestException(
+					`Category's actionType must match parent's actionType. Parent has ${foundParent.actionType} but trying to set ${dto.actionType}`,
+				);
+			}
+			parent = foundParent;
 		}
 
 		const category = this.treeRepo.create({
@@ -70,15 +147,7 @@ export class CategoryService {
 			sortOrder: dto.sortOrder,
 		});
 
-		if (dto.parentId) {
-			const parent = await this.treeRepo.findOne({
-				where: { id: dto.parentId },
-			});
-			if (!parent) {
-				throw new NotFoundException(
-					`Parent category ${dto.parentId} not found`,
-				);
-			}
+		if (parent) {
 			category.parent = parent;
 		}
 
@@ -106,6 +175,31 @@ export class CategoryService {
 			category.name = dto.name;
 		}
 
+		// Check actionType change
+		if (
+			dto.actionType !== undefined &&
+			dto.actionType !== category.actionType
+		) {
+			// Check if has children
+			const children = await this.treeRepo.findDescendants(category);
+			if (children.length > 1) {
+				// includes itself
+				throw new BadRequestException(
+					'Cannot change actionType of a category that has children',
+				);
+			}
+
+			// Check parent's actionType if parent exists
+			if (category.parent) {
+				if (category.parent.actionType !== dto.actionType) {
+					throw new BadRequestException(
+						`Category's actionType must match parent's actionType. Parent has ${category.parent.actionType} but trying to set ${dto.actionType}`,
+					);
+				}
+			}
+			category.actionType = dto.actionType;
+		}
+
 		// Parent: null → gỡ, id → set, undefined → giữ nguyên
 		if (dto.parentId !== undefined) {
 			if (dto.parentId === null) {
@@ -119,6 +213,12 @@ export class CategoryService {
 						`Parent category ${dto.parentId} not found`,
 					);
 				}
+				// Check if new parent's actionType matches
+				if (parent.actionType !== category.actionType) {
+					throw new BadRequestException(
+						`Category's actionType must match parent's actionType. Parent has ${parent.actionType} but category has ${category.actionType}`,
+					);
+				}
 				category.parent = parent;
 			}
 		}
@@ -127,7 +227,6 @@ export class CategoryService {
 		if (dto.icon !== undefined) category.icon = dto.icon;
 		if (dto.description !== undefined)
 			category.description = dto.description;
-		if (dto.actionType !== undefined) category.actionType = dto.actionType;
 		if (dto.sortOrder !== undefined) category.sortOrder = dto.sortOrder;
 
 		await this.treeRepo.save(category);

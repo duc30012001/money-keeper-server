@@ -7,6 +7,7 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Query,
 	UseInterceptors,
 } from '@nestjs/common';
 import { ClassSerializerInterceptor } from '@nestjs/common/serializer';
@@ -19,6 +20,7 @@ import {
 import { Category } from './category.entity';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dtos/create-category.dto';
+import { FindCategoriesDto } from './dtos/find-categories.dto';
 import { UpdateCategoryDto } from './dtos/update-category.dto';
 import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
 
@@ -30,8 +32,10 @@ export class CategoryController {
 
 	@Get()
 	@ApiOperation({ summary: 'Get all categories' })
-	async findAll(): Promise<PaginatedResponseDto<Category>> {
-		return this.categoryService.findAll();
+	async findAll(
+		@Query() query: FindCategoriesDto,
+	): Promise<PaginatedResponseDto<Category>> {
+		return this.categoryService.findAll(query);
 	}
 
 	@Get(':id')
