@@ -11,7 +11,7 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { AccountTypeService } from '../../account-type/account-type.service';
-import { ActionType } from '../../category/enums/action-type.enum';
+import { CategoryType } from '../../category/enums/action-type.enum';
 import { Account } from '../account.entity';
 import { CreateAccountDto } from '../dtos/create-account.dto';
 import { FindAccountDto } from '../dtos/find-account.dto';
@@ -54,6 +54,7 @@ export class AccountService {
 		// ordering: first by accountType.sortOrder, then by account.sortOrder
 		qb.orderBy('accountType.sortOrder', 'ASC')
 			.addOrderBy('account.sortOrder', 'ASC')
+			.addOrderBy('account.name', 'ASC')
 			.skip(skip)
 			.take(pageSize);
 
@@ -201,14 +202,14 @@ export class AccountService {
 	async updateBalance(
 		id: string,
 		amount: number,
-		actionType: ActionType,
+		type: CategoryType,
 	): Promise<Account> {
 		const account = await this.findOne(id);
-		switch (actionType) {
-			case ActionType.INCOME:
+		switch (type) {
+			case CategoryType.INCOME:
 				account.balance += amount;
 				break;
-			case ActionType.EXPENSE:
+			case CategoryType.EXPENSE:
 				account.balance -= amount;
 				break;
 			default:

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { calculateBalance } from 'src/utils/balance';
 import { EntityManager } from 'typeorm';
-import { ActionType } from '../../category/enums/action-type.enum';
+import { CategoryType } from '../../category/enums/action-type.enum';
 import { Account } from '../account.entity';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class AccountBalanceService {
 	async updateBalance(
 		id: string,
 		amount: number,
-		actionType: ActionType,
+		type: CategoryType,
 		manager: EntityManager,
 	): Promise<Account> {
 		const repo = manager.getRepository(Account);
@@ -23,7 +23,7 @@ export class AccountBalanceService {
 			throw new NotFoundException(`Account with ID ${id} not found`);
 		}
 
-		account.balance = calculateBalance(account.balance, amount, actionType);
+		account.balance = calculateBalance(account.balance, amount, type);
 
 		return repo.save(account);
 	}

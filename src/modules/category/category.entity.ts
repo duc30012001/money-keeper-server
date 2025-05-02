@@ -16,7 +16,7 @@ import {
 } from 'typeorm';
 
 import { BaseEntity } from 'src/common/entities/base.entity';
-import { ActionType } from './enums/action-type.enum';
+import { CategoryType } from './enums/action-type.enum';
 
 @Entity('categories')
 @Tree('closure-table')
@@ -33,11 +33,11 @@ export class Category extends BaseEntity {
 
 	@Column({
 		type: 'enum',
-		enum: ActionType,
-		name: 'action_type',
+		enum: CategoryType,
+		name: 'type',
 	})
-	@IsEnum(ActionType)
-	actionType: ActionType;
+	@IsEnum(CategoryType)
+	type: CategoryType;
 
 	@Column({ name: 'description', nullable: true })
 	@IsOptional()

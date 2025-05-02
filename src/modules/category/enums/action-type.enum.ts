@@ -1,4 +1,4 @@
-export enum ActionType {
+export enum CategoryType {
 	INCOME = 'income',
 	EXPENSE = 'expense',
 }

@@ -26,6 +26,7 @@ export class AccountTypeService {
 		const [items, total] = await this.accountTypeRepository.findAndCount({
 			order: {
 				sortOrder: 'ASC',
+				name: 'ASC',
 			},
 		});
 

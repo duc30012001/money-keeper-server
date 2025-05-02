@@ -29,13 +29,13 @@ export class CategoryService {
 		query?: FindCategoriesDto,
 	): Promise<PaginatedResponseDto<TreeNode<Category, 'children'>>> {
 		// 1. Xây điều kiện filter từ DTO
-		const { keyword, actionType } = query ?? {};
+		const { keyword, type } = query ?? {};
 
 		// 2. Lấy toàn bộ categories flat kèm relation parent
 		const allCats = await this.treeRepo.find({
 			relations: ['parent'],
 			order: {
-				actionType: 'ASC',
+				type: 'ASC',
 				sortOrder: 'ASC',
 			},
 		});
@@ -48,7 +48,7 @@ export class CategoryService {
 			) {
 				return false;
 			}
-			if (actionType?.length && !actionType.includes(cat.actionType)) {
+			if (type?.length && !type.includes(cat.type)) {
 				return false;
 			}
 			return true;
@@ -119,7 +119,7 @@ export class CategoryService {
 			);
 		}
 
-		// Check parent's actionType if parent exists
+		// Check parent's type if parent exists
 		let parent: Category | undefined;
 		if (dto.parentId) {
 			const foundParent = await this.treeRepo.findOne({
@@ -130,9 +130,9 @@ export class CategoryService {
 					`Parent category ${dto.parentId} not found`,
 				);
 			}
-			if (foundParent.actionType !== dto.actionType) {
+			if (foundParent.type !== dto.type) {
 				throw new BadRequestException(
-					`Category's actionType must match parent's actionType. Parent has ${foundParent.actionType} but trying to set ${dto.actionType}`,
+					`Category's type must match parent's type. Parent has ${foundParent.type} but trying to set ${dto.type}`,
 				);
 			}
 			parent = foundParent;
@@ -141,7 +141,7 @@ export class CategoryService {
 		const category = this.treeRepo.create({
 			name: dto.name,
 			icon: dto.icon,
-			actionType: dto.actionType,
+			type: dto.type,
 			description: dto.description,
 			sortOrder: dto.sortOrder,
 		});
@@ -174,29 +174,26 @@ export class CategoryService {
 			category.name = dto.name;
 		}
 
-		// Check actionType change
-		if (
-			dto.actionType !== undefined &&
-			dto.actionType !== category.actionType
-		) {
+		// Check type change
+		if (dto.type !== undefined && dto.type !== category.type) {
 			// Check if has children
 			const children = await this.treeRepo.findDescendants(category);
 			if (children.length > 1) {
 				// includes itself
 				throw new BadRequestException(
-					'Cannot change actionType of a category that has children',
+					'Cannot change type of a category that has children',
 				);
 			}
 
-			// Check parent's actionType if parent exists
+			// Check parent's type if parent exists
 			if (category.parent) {
-				if (category.parent.actionType !== dto.actionType) {
+				if (category.parent.type !== dto.type) {
 					throw new BadRequestException(
-						`Category's actionType must match parent's actionType. Parent has ${category.parent.actionType} but trying to set ${dto.actionType}`,
+						`Category's type must match parent's type. Parent has ${category.parent.type} but trying to set ${dto.type}`,
 					);
 				}
 			}
-			category.actionType = dto.actionType;
+			category.type = dto.type;
 		}
 
 		// Parent: null → gỡ, id → set, undefined → giữ nguyên
@@ -212,10 +209,10 @@ export class CategoryService {
 						`Parent category ${dto.parentId} not found`,
 					);
 				}
-				// Check if new parent's actionType matches
-				if (parent.actionType !== category.actionType) {
+				// Check if new parent's type matches
+				if (parent.type !== category.type) {
 					throw new BadRequestException(
-						`Category's actionType must match parent's actionType. Parent has ${parent.actionType} but category has ${category.actionType}`,
+						`Category's type must match parent's type. Parent has ${parent.type} but category has ${category.type}`,
 					);
 				}
 				category.parent = parent;

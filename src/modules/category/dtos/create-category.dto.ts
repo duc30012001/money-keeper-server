@@ -7,7 +7,7 @@ import {
 	IsString,
 	IsUUID,
 } from 'class-validator';
-import { ActionType } from '../enums/action-type.enum';
+import { CategoryType } from '../enums/action-type.enum';
 
 export class CreateCategoryDto {
 	@ApiProperty({
@@ -30,11 +30,11 @@ export class CreateCategoryDto {
 
 	@ApiProperty({
 		description: 'Action type of the category',
-		enum: ActionType,
-		example: ActionType.EXPENSE,
+		enum: CategoryType,
+		example: CategoryType.EXPENSE,
 	})
-	@IsEnum(ActionType)
-	actionType: ActionType;
+	@IsEnum(CategoryType)
+	type: CategoryType;
 
 	@ApiProperty({
 		description: 'Description of the category',

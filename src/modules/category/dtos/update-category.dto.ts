@@ -6,7 +6,7 @@ import {
 	IsString,
 	IsUUID,
 } from 'class-validator';
-import { ActionType } from '../enums/action-type.enum';
+import { CategoryType } from '../enums/action-type.enum';
 import { CreateCategoryDto } from './create-category.dto';
 
 export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {
@@ -31,13 +31,13 @@ export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {
 
 	@ApiProperty({
 		description: 'Action type of the category',
-		enum: ActionType,
-		example: ActionType.EXPENSE,
+		enum: CategoryType,
+		example: CategoryType.EXPENSE,
 		required: false,
 	})
 	@IsOptional()
-	@IsEnum(ActionType)
-	actionType?: ActionType;
+	@IsEnum(CategoryType)
+	type?: CategoryType;
 
 	@ApiProperty({
 		description: 'Description of the category',

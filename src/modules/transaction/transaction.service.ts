@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	HttpException,
 	Injectable,
 	InternalServerErrorException,
@@ -14,12 +15,12 @@ import { DataSource, EntityManager } from 'typeorm';
 import { Account } from '../account/account.entity';
 import { AccountBalanceService } from '../account/services/account-balance.service';
 import { Category } from '../category/category.entity';
-import { ActionType } from '../category/enums/action-type.enum';
+import { CategoryType } from '../category/enums/action-type.enum';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { FindTransactionDto } from './dtos/find-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
 import { Transaction } from './transaction.entity';
-import { TransactionOrderBy } from './transaction.enum';
+import { TransactionOrderBy, TransactionType } from './transaction.enum';
 
 @Injectable()
 export class TransactionService {
@@ -30,8 +31,11 @@ export class TransactionService {
 		private readonly accountBalanceService: AccountBalanceService,
 	) {}
 
+	// ------------------------------------------------------------
+	// PUBLIC — QUERYING
+	// ------------------------------------------------------------
 	async findAll(
-		findTransactionDto: FindTransactionDto,
+		dto: FindTransactionDto,
 	): Promise<PaginatedResponseDto<Transaction>> {
 		const {
 			page,
@@ -40,251 +44,367 @@ export class TransactionService {
 			keyword,
 			categoryIds,
 			accountIds,
+			senderAccountIds,
+			receiverAccountIds,
 			transactionDate,
 			amount,
 			orderBy = TransactionOrderBy.TRANSACTION_DATE,
 			orderDirection = OrderDirection.DESC,
-		} = findTransactionDto;
+			type,
+		} = dto;
 
 		const repo = this.ds.getRepository(Transaction);
 		const qb = repo
-			.createQueryBuilder('transaction')
+			.createQueryBuilder('tx')
 			.select([
-				'transaction.id',
-				'transaction.amount',
-				'transaction.description',
-				'transaction.transactionDate',
-				'transaction.createdAt',
-				'transaction.updatedAt',
+				'tx.id',
+				'tx.amount',
+				'tx.type',
+				'tx.description',
+				'tx.transactionDate',
+				'tx.createdAt',
+				'tx.updatedAt',
 			])
-			// join account and only pull id + name
-			.leftJoin('transaction.account', 'account')
+			.leftJoin('tx.account', 'account')
 			.addSelect(['account.id', 'account.name'])
-			// join category and only pull id, name, actionType
-			.leftJoin('transaction.category', 'category')
-			.addSelect(['category.id', 'category.name', 'category.actionType']);
+			.leftJoin('tx.category', 'category')
+			.addSelect(['category.id', 'category.name'])
+			.leftJoin('tx.senderAccount', 'senderAccount')
+			.addSelect(['senderAccount.id', 'senderAccount.name'])
+			.leftJoin('tx.receiverAccount', 'receiverAccount')
+			.addSelect(['receiverAccount.id', 'receiverAccount.name']);
 
-		// dynamic filters
 		if (keyword) {
-			qb.andWhere('transaction.description ILIKE :kw', {
-				kw: `%${keyword}%`,
-			});
+			qb.andWhere('tx.description ILIKE :kw', { kw: `%${keyword}%` });
 		}
 		if (accountIds?.length) {
-			qb.andWhere('account.id IN (:...aIds)', { aIds: accountIds });
+			qb.andWhere('account.id IN(:...accountIds)', { accountIds });
 		}
 		if (categoryIds?.length) {
-			qb.andWhere('category.id IN (:...cIds)', { cIds: categoryIds });
+			qb.andWhere('category.id IN(:...categoryIds)', { categoryIds });
+		}
+		if (senderAccountIds?.length) {
+			qb.andWhere('senderAccount.id IN(:...senderAccountIds)', {
+				senderAccountIds,
+			});
+		}
+		if (receiverAccountIds?.length) {
+			qb.andWhere('receiverAccount.id IN(:...receiverAccountIds)', {
+				receiverAccountIds,
+			});
+		}
+		if (type) {
+			qb.andWhere('tx.type = :type', { type });
 		}
 		if (transactionDate) {
-			qb.andWhere('transaction.transactionDate BETWEEN :from AND :to', {
+			qb.andWhere('tx.transactionDate BETWEEN :from AND :to', {
 				from: transactionDate[0],
 				to: transactionDate[1],
 			});
 		}
 		if (amount) {
-			qb.andWhere('transaction.amount BETWEEN :min AND :max', {
+			qb.andWhere('tx.amount BETWEEN :min AND :max', {
 				min: amount[0],
 				max: amount[1],
 			});
 		}
 
-		// ordering & pagination
-		qb.orderBy(`transaction.${orderBy}`, orderDirection)
-			.skip(skip)
-			.take(pageSize);
+		qb.orderBy(`tx.${orderBy}`, orderDirection).skip(skip).take(pageSize);
 
-		// execute
 		const [items, total] = await qb.getManyAndCount();
-
-		const meta = new PaginationMeta({
-			total,
-			page,
-			pageSize,
-		});
-
+		const meta = new PaginationMeta({ total, page, pageSize });
 		return new PaginatedResponseDto(items, meta);
 	}
 
 	async findOne(id: string): Promise<Transaction> {
-		return this.ds.getRepository(Transaction).findOneOrFail({
+		const tx = await this.ds.getRepository(Transaction).findOne({
 			where: { id },
-			relations: ['account', 'category'],
+			relations: [
+				'account',
+				'category',
+				'senderAccount',
+				'receiverAccount',
+			],
 		});
+		if (!tx) throw new NotFoundException(`Transaction ${id} not found`);
+		return tx;
 	}
 
+	// ------------------------------------------------------------
+	// PUBLIC — MUTATIONS
+	// ------------------------------------------------------------
 	async create(dto: CreateTransactionDto): Promise<Transaction> {
 		return this.ds
-			.transaction(async (manager) => {
-				// 1) load category inside TX
-				const category = await manager.findOne(Category, {
-					where: { id: dto.categoryId },
-				});
-				if (!category) {
-					throw new NotFoundException(
-						`Category with ID ${dto.categoryId} not found`,
-					);
-				}
-
-				// 2) update balance via our new service, inside the same TX
-				const account = await this.accountBalanceService.updateBalance(
-					dto.accountId,
-					dto.amount,
-					category.actionType,
-					manager,
-				);
-
-				// 3) create & save the transaction
-				const tx = manager.create(Transaction, {
-					account,
-					category,
-					amount: dto.amount,
-					description: dto.description,
-					transactionDate: dto.transactionDate,
-				});
-				return manager.save(tx);
-			})
-			.catch((error) => this.throwError(error, 'create transaction'));
+			.transaction((manager) => this._create(manager, dto))
+			.catch((err) => this._wrapError(err, 'create transaction'));
 	}
 
 	async update(id: string, dto: UpdateTransactionDto): Promise<Transaction> {
 		return this.ds
-			.transaction(async (manager) => {
-				const repo = manager.getRepository(Transaction);
-
-				// 1) Load existing transaction + relations
-				const existing = await repo.findOne({
-					where: { id },
-					relations: ['account', 'category'],
-					select: ['id', 'account', 'category', 'amount'],
-				});
-				if (!existing) {
-					throw new NotFoundException(
-						`Transaction with ID ${id} not found`,
-					);
-				}
-
-				// 2) Extract “original” values
-				const origAccountId = existing.account.id;
-				const origCategoryId = existing.category.id;
-				const origCategoryAction = existing.category.actionType;
-				const origAmount = existing.amount;
-
-				// 3) Compute “new” values (fall back to original)
-				const newAccountId = dto.accountId ?? origAccountId;
-				const newCategory = dto.categoryId
-					? await manager.findOneOrFail(Category, {
-							where: { id: dto.categoryId },
-							select: ['id', 'actionType'],
-						})
-					: existing.category;
-				const newAmount = dto.amount ?? origAmount;
-
-				// 4) Only if account, category or amount changed → adjust balances
-				const accountChanged = newAccountId !== origAccountId;
-				const categoryChanged = newCategory.id !== origCategoryId;
-				const amountChanged = Number(newAmount) !== Number(origAmount);
-
-				if (accountChanged || categoryChanged || amountChanged) {
-					// a) Reverse the original effect
-					const reverseAction: ActionType =
-						origCategoryAction === ActionType.INCOME
-							? ActionType.EXPENSE
-							: ActionType.INCOME;
-					await this.accountBalanceService.updateBalance(
-						origAccountId,
-						origAmount,
-						reverseAction,
-						manager,
-					);
-
-					// b) Apply the new effect
-					await this.accountBalanceService.updateBalance(
-						newAccountId,
-						newAmount,
-						newCategory.actionType,
-						manager,
-					);
-				}
-
-				// 5) Patch and save the transaction entity
-				existing.account = { id: newAccountId } as Account;
-				existing.category = newCategory;
-				existing.amount = newAmount;
-				if (dto.description !== undefined)
-					existing.description = dto.description;
-				if (dto.transactionDate !== undefined)
-					existing.transactionDate = dto.transactionDate;
-
-				return repo.save(existing);
-			})
-			.catch((error) => this.throwError(error, 'update transaction'));
+			.transaction((manager) => this._update(manager, id, dto))
+			.catch((err) => this._wrapError(err, 'update transaction'));
 	}
 
 	async remove(id: string): Promise<void> {
-		return this.ds
-			.transaction(async (manager) => {
-				const repo = manager.getRepository(Transaction);
-				await this.reverseBalanceEffect(id, manager);
-				await repo.delete(id);
-			})
-			.catch((error) => this.throwError(error, 'remove transaction'));
+		await this.ds
+			.transaction((manager) => this._remove(manager, id))
+			.catch((err) => this._wrapError(err, 'remove transaction'));
 	}
 
-	private async reverseBalanceEffect(
-		transactionId: string,
+	// ------------------------------------------------------------
+	// PRIVATE — CREATE
+	// ------------------------------------------------------------
+	private async _create(
 		manager: EntityManager,
-	) {
-		const repo = manager.getRepository(Transaction);
+		dto: CreateTransactionDto,
+	): Promise<Transaction> {
+		return dto.type === TransactionType.TRANSFER
+			? this._createTransfer(manager, dto)
+			: this._createStandard(manager, dto);
+	}
 
-		// 1) load existing transaction with relations
-		const existing = await repo.findOne({
-			where: { id: transactionId },
-			relations: ['account', 'category'],
-		});
-		if (!existing) {
-			throw new NotFoundException(
-				`Transaction with ID ${transactionId} not found`,
-			);
-		}
-
-		// original values
-		const origAccount = existing.account;
-		const origCategory = existing.category;
-		const origAmount = existing.amount;
-
-		// 2) reverse original balance effect
-		const reverseAction: ActionType =
-			origCategory.actionType === ActionType.INCOME
-				? ActionType.EXPENSE
-				: ActionType.INCOME;
+	private async _createTransfer(
+		manager: EntityManager,
+		dto: CreateTransactionDto,
+	): Promise<Transaction> {
+		// adjust both balances
 		await this.accountBalanceService.updateBalance(
-			origAccount.id,
-			origAmount,
-			reverseAction,
+			dto.senderAccountId!,
+			dto.amount,
+			CategoryType.EXPENSE,
+			manager,
+		);
+		await this.accountBalanceService.updateBalance(
+			dto.receiverAccountId!,
+			dto.amount,
+			CategoryType.INCOME,
 			manager,
 		);
 
-		return {
-			origAccount,
-			origCategory,
-			origAmount,
-		};
+		// create single record
+		const tx = manager.create(Transaction, {
+			type: TransactionType.TRANSFER,
+			senderAccount: { id: dto.senderAccountId } as Account,
+			receiverAccount: { id: dto.receiverAccountId } as Account,
+			amount: dto.amount,
+			description: dto.description,
+			transactionDate: dto.transactionDate,
+		});
+		return manager.save(tx);
 	}
 
-	private throwError<T>(error: unknown, action: string): T {
-		// 1) If it’s already a Nest/HTTP exception, just re-throw it
-		if (error instanceof HttpException) {
-			throw error;
+	private async _createStandard(
+		manager: EntityManager,
+		dto: CreateTransactionDto,
+	): Promise<Transaction> {
+		// load category
+		const category = await manager.findOneOrFail<Category>(Category, {
+			where: { id: dto.categoryId! },
+			select: ['id', 'type'],
+		});
+
+		// ✋ validate match
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		if (dto.type !== category.type) {
+			throw new BadRequestException(
+				`Transaction type "${dto.type}" does not match category type "${category.type}".`,
+			);
 		}
 
-		// 2) Otherwise log & wrap it
-		this.logger.error(
-			`Time: ${new Date().toISOString()}: Could not ${action}:`,
-			error as any,
+		// adjust balance
+		const account = await this.accountBalanceService.updateBalance(
+			dto.accountId!,
+			dto.amount,
+			category.type,
+			manager,
 		);
 
-		const msg = error instanceof Error ? error.message : 'Unexpected error';
+		// create and return
+		const tx = manager.create(Transaction, {
+			type: dto.type,
+			account,
+			category,
+			amount:
+				dto.type === TransactionType.EXPENSE ? -dto.amount : dto.amount,
+			description: dto.description,
+			transactionDate: dto.transactionDate,
+		});
+		return manager.save(tx);
+	}
+
+	// ------------------------------------------------------------
+	// PRIVATE — UPDATE
+	// ------------------------------------------------------------
+	private async _update(
+		manager: EntityManager,
+		id: string,
+		dto: UpdateTransactionDto,
+	): Promise<Transaction> {
+		const repo = manager.getRepository<Transaction>(Transaction);
+		const tx = await repo.findOne({
+			where: { id },
+			relations: [
+				'account',
+				'category',
+				'senderAccount',
+				'receiverAccount',
+			],
+		});
+		if (!tx) throw new NotFoundException(`Transaction ${id} not found`);
+
+		// 1) undo old effects
+		await this._reverseEffects(tx, manager);
+
+		// 2) apply new
+		const patched = await this._applyNewValues(tx, dto, manager);
+
+		// 3) persist
+		console.log('patched:', patched);
+		return repo.save(patched);
+	}
+
+	private async _applyNewValues(
+		tx: Transaction,
+		dto: UpdateTransactionDto,
+		manager: EntityManager,
+	): Promise<Transaction> {
+		// base fallbacks
+		const newType = dto.type ?? tx.type;
+		const newAmt = dto.amount ?? Math.abs(Number(tx.amount));
+		const newDate = dto.transactionDate ?? tx.transactionDate;
+		const newDesc = dto.description ?? tx.description;
+
+		if (newType === TransactionType.TRANSFER) {
+			// ➡️ converting TO transfer: clear standard fields
+			const senderId = dto.senderAccountId ?? tx.senderAccount!.id;
+			const receiverId = dto.receiverAccountId ?? tx.receiverAccount!.id;
+
+			// apply balances
+			await this.accountBalanceService.updateBalance(
+				senderId,
+				newAmt,
+				CategoryType.EXPENSE,
+				manager,
+			);
+			await this.accountBalanceService.updateBalance(
+				receiverId,
+				newAmt,
+				CategoryType.INCOME,
+				manager,
+			);
+
+			// patch transfer fields
+			tx.type = TransactionType.TRANSFER;
+			tx.senderAccount = { id: senderId } as Account;
+			tx.receiverAccount = { id: receiverId } as Account;
+			tx.account = undefined;
+			tx.category = undefined;
+			tx.amount = newAmt;
+		} else {
+			// ➡️ converting TO standard: clear transfer fields
+			const newCategory: Category = dto.categoryId
+				? await manager.findOneOrFail<Category>(Category, {
+						where: { id: dto.categoryId },
+						select: ['id', 'type'],
+					})
+				: tx.category!;
+
+			// ✋ validate match
+			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+			// @ts-ignore
+			if (newType !== newCategory.type) {
+				throw new BadRequestException(
+					`Transaction type "${newType}" does not match category type "${newCategory.type}".`,
+				);
+			}
+
+			// apply balance
+			const accId = dto.accountId ?? tx.account!.id;
+			await this.accountBalanceService.updateBalance(
+				accId,
+				newAmt,
+				newCategory.type,
+				manager,
+			);
+
+			// patch standard fields
+			tx.type = newType;
+			tx.account = { id: accId } as Account;
+			tx.category = newCategory;
+			tx.senderAccount = undefined;
+			tx.receiverAccount = undefined;
+			tx.amount =
+				newCategory.type === CategoryType.EXPENSE ? -newAmt : newAmt;
+		}
+
+		// common patches
+		tx.transactionDate = newDate;
+		tx.description = newDesc;
+		return tx;
+	}
+
+	private async _reverseEffects(tx: Transaction, manager: EntityManager) {
+		if (tx.type === TransactionType.TRANSFER) {
+			// undo transfer
+			await this.accountBalanceService.updateBalance(
+				tx.senderAccount!.id,
+				Math.abs(tx.amount),
+				CategoryType.INCOME,
+				manager,
+			);
+			await this.accountBalanceService.updateBalance(
+				tx.receiverAccount!.id,
+				Math.abs(tx.amount),
+				CategoryType.EXPENSE,
+				manager,
+			);
+		} else {
+			// undo standard
+			const origAmt = Math.abs(Number(tx.amount));
+			const reverseType =
+				tx.category!.type === CategoryType.INCOME
+					? CategoryType.EXPENSE
+					: CategoryType.INCOME;
+			await this.accountBalanceService.updateBalance(
+				tx.account!.id,
+				origAmt,
+				reverseType,
+				manager,
+			);
+		}
+	}
+
+	// ------------------------------------------------------------
+	// PRIVATE — REMOVE
+	// ------------------------------------------------------------
+	private async _remove(manager: EntityManager, id: string): Promise<void> {
+		const repo = manager.getRepository<Transaction>(Transaction);
+		const tx = await repo.findOne({
+			where: { id },
+			relations: [
+				'account',
+				'category',
+				'senderAccount',
+				'receiverAccount',
+			],
+		});
+		if (!tx) throw new NotFoundException(`Transaction ${id} not found`);
+
+		// undo
+		await this._reverseEffects(tx, manager);
+
+		// delete
+		await manager.remove(tx);
+	}
+
+	// ------------------------------------------------------------
+	// PRIVATE — ERROR HANDLING
+	// ------------------------------------------------------------
+	private _wrapError(error: unknown, action: string): never {
+		if (error instanceof HttpException) throw error;
+		this.logger.error(`Failed to ${action}`, error as any);
+		const msg = error instanceof Error ? error.message : 'Unknown error';
 		throw new InternalServerErrorException(`Could not ${action}: ${msg}`);
 	}
 }
