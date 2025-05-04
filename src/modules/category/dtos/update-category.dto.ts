@@ -6,7 +6,7 @@ import {
 	IsString,
 	IsUUID,
 } from 'class-validator';
-import { CategoryType } from '../enums/action-type.enum';
+import { CategoryType } from '../category.enum';
 import { CreateCategoryDto } from './create-category.dto';
 
 export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {

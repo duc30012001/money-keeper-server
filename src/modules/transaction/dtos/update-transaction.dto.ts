@@ -8,9 +8,11 @@ import {
 	IsPositive,
 	IsString,
 	IsUUID,
+	Validate,
 	ValidateIf,
 } from 'class-validator';
 import { TransactionType } from '../transaction.enum';
+import { TransferAccountsNotEqual } from './create-transaction.dto';
 
 export class UpdateTransactionDto {
 	@ApiPropertyOptional({
@@ -70,6 +72,7 @@ export class UpdateTransactionDto {
 	@IsOptional()
 	@IsNotEmpty()
 	@IsUUID()
+	@Validate(TransferAccountsNotEqual)
 	receiverAccountId?: string;
 
 	@ApiPropertyOptional({

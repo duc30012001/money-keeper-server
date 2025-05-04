@@ -5,6 +5,7 @@ import {
 	ArrayMinSize,
 	IsArray,
 	IsDate,
+	IsEnum,
 	IsNumber,
 	IsOptional,
 	IsUUID,
@@ -64,5 +65,17 @@ export function CsvNumberRange(validationOpts?: ValidationOptions) {
 		ArrayMinSize(2),
 		ArrayMaxSize(2),
 		IsNumber({}, { each: true, ...validationOpts }),
+	);
+}
+
+export function CsvEnumArray<T>(
+	enumType: T,
+	validationOpts?: ValidationOptions,
+) {
+	return applyDecorators(
+		makeSplitter<string>((v) => v),
+		IsOptional(),
+		IsArray(),
+		IsEnum(enumType as object, { each: true, ...validationOpts }),
 	);
 }

@@ -16,7 +16,7 @@ import {
 } from 'typeorm';
 
 import { BaseEntity } from 'src/common/entities/base.entity';
-import { CategoryType } from './enums/action-type.enum';
+import { CategoryType } from './category.enum';
 
 @Entity('categories')
 @Tree('closure-table')

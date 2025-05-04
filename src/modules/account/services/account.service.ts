@@ -11,7 +11,7 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { AccountTypeService } from '../../account-type/account-type.service';
-import { CategoryType } from '../../category/enums/action-type.enum';
+import { CategoryType } from '../../category/category.enum';
 import { Account } from '../account.entity';
 import { CreateAccountDto } from '../dtos/create-account.dto';
 import { FindAccountDto } from '../dtos/find-account.dto';

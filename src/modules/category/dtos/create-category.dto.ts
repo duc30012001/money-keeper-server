@@ -7,7 +7,7 @@ import {
 	IsString,
 	IsUUID,
 } from 'class-validator';
-import { CategoryType } from '../enums/action-type.enum';
+import { CategoryType } from '../category.enum';
 
 export class CreateCategoryDto {
 	@ApiProperty({

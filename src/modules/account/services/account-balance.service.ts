@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { calculateBalance } from 'src/utils/balance';
 import { EntityManager } from 'typeorm';
-import { CategoryType } from '../../category/enums/action-type.enum';
+import { CategoryType } from '../../category/category.enum';
 import { Account } from '../account.entity';
 
 @Injectable()

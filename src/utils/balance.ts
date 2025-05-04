@@ -1,4 +1,4 @@
-import { CategoryType } from 'src/modules/category/enums/action-type.enum';
+import { CategoryType } from 'src/modules/category/category.enum';
 
 export const calculateBalance = (
 	currentBalance: number,

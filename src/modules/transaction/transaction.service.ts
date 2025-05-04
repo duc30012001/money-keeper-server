@@ -10,17 +10,16 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
-import { OrderDirection } from 'src/common/enums/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { Account } from '../account/account.entity';
 import { AccountBalanceService } from '../account/services/account-balance.service';
 import { Category } from '../category/category.entity';
-import { CategoryType } from '../category/enums/action-type.enum';
+import { CategoryType } from '../category/category.enum';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { FindTransactionDto } from './dtos/find-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
 import { Transaction } from './transaction.entity';
-import { TransactionOrderBy, TransactionType } from './transaction.enum';
+import { TransactionType } from './transaction.enum';
 
 @Injectable()
 export class TransactionService {
@@ -48,9 +47,8 @@ export class TransactionService {
 			receiverAccountIds,
 			transactionDate,
 			amount,
-			orderBy = TransactionOrderBy.TRANSACTION_DATE,
-			orderDirection = OrderDirection.DESC,
 			type,
+			sort,
 		} = dto;
 
 		const repo = this.ds.getRepository(Transaction);
@@ -93,8 +91,8 @@ export class TransactionService {
 				receiverAccountIds,
 			});
 		}
-		if (type) {
-			qb.andWhere('tx.type = :type', { type });
+		if (type?.length) {
+			qb.andWhere('tx.type IN(:...types)', { types: type });
 		}
 		if (transactionDate) {
 			qb.andWhere('tx.transactionDate BETWEEN :from AND :to', {
@@ -109,7 +107,14 @@ export class TransactionService {
 			});
 		}
 
-		qb.orderBy(`tx.${orderBy}`, orderDirection).skip(skip).take(pageSize);
+		if (sort?.length) {
+			for (const s of sort) {
+				qb.orderBy(`tx.${s.id}`, s.desc ? 'DESC' : 'ASC');
+			}
+		} else {
+			qb.orderBy(`tx.transactionDate`, 'DESC');
+		}
+		qb.skip(skip).take(pageSize);
 
 		const [items, total] = await qb.getManyAndCount();
 		const meta = new PaginationMeta({ total, page, pageSize });
@@ -260,7 +265,6 @@ export class TransactionService {
 		const patched = await this._applyNewValues(tx, dto, manager);
 
 		// 3) persist
-		console.log('patched:', patched);
 		return repo.save(patched);
 	}
 
@@ -298,8 +302,8 @@ export class TransactionService {
 			tx.type = TransactionType.TRANSFER;
 			tx.senderAccount = { id: senderId } as Account;
 			tx.receiverAccount = { id: receiverId } as Account;
-			tx.account = undefined;
-			tx.category = undefined;
+			tx.account = null;
+			tx.category = null;
 			tx.amount = newAmt;
 		} else {
 			// ➡️ converting TO standard: clear transfer fields
@@ -332,8 +336,8 @@ export class TransactionService {
 			tx.type = newType;
 			tx.account = { id: accId } as Account;
 			tx.category = newCategory;
-			tx.senderAccount = undefined;
-			tx.receiverAccount = undefined;
+			tx.senderAccount = null;
+			tx.receiverAccount = null;
 			tx.amount =
 				newCategory.type === CategoryType.EXPENSE ? -newAmt : newAmt;
 		}

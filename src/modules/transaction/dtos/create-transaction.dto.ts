@@ -8,9 +8,33 @@ import {
 	IsPositive,
 	IsString,
 	IsUUID,
+	Validate,
 	ValidateIf,
+	ValidationArguments,
+	ValidatorConstraint,
+	ValidatorConstraintInterface,
 } from 'class-validator';
 import { TransactionType } from '../transaction.enum';
+
+@ValidatorConstraint({ name: 'TransferAccountsNotEqual', async: false })
+export class TransferAccountsNotEqual implements ValidatorConstraintInterface {
+	validate(_: any, args: ValidationArguments) {
+		const dto = args.object as CreateTransactionDto;
+		// only enforce on transfers
+		if (dto.type !== TransactionType.TRANSFER) return true;
+		// require both and ensure they differ
+		return (
+			!!dto.senderAccountId &&
+			!!dto.receiverAccountId &&
+			dto.senderAccountId !== dto.receiverAccountId
+		);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	defaultMessage(args: ValidationArguments) {
+		return 'Receiver account must be different from sender account';
+	}
+}
 
 export class CreateTransactionDto {
 	@ApiProperty({
@@ -67,6 +91,7 @@ export class CreateTransactionDto {
 	)
 	@IsNotEmpty()
 	@IsUUID()
+	@Validate(TransferAccountsNotEqual)
 	receiverAccountId?: string;
 
 	@ApiProperty({

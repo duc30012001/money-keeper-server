@@ -15,27 +15,53 @@ export class Transaction extends BaseEntity {
 	@IsEnum(TransactionType)
 	type: TransactionType;
 
-	@ManyToOne(() => Account, { nullable: true })
-	@JoinColumn({ name: 'account_id' })
-	account?: Account;
-
-	@ManyToOne(() => Account, { nullable: true })
+	// ─── Sender Account ────────────────────────────────
+	@ManyToOne(() => Account, {
+		nullable: true,
+		onDelete: 'SET NULL',
+	})
 	@JoinColumn({ name: 'sender_account_id' })
-	senderAccount?: Account;
+	senderAccount: Account | null;
 
-	@ManyToOne(() => Account, { nullable: true })
+	// ─── Receiver Account ─────────────────────────────
+	@ManyToOne(() => Account, {
+		nullable: true,
+		onDelete: 'SET NULL',
+	})
 	@JoinColumn({ name: 'receiver_account_id' })
-	receiverAccount?: Account;
+	receiverAccount: Account | null;
 
-	@ManyToOne(() => Category, { nullable: true })
+	// ─── Account ───────────────────────────────────────
+	@ManyToOne(() => Account, {
+		nullable: true,
+		onDelete: 'SET NULL',
+	})
+	@JoinColumn({ name: 'account_id' })
+	account: Account | null;
+
+	// ─── Category ─────────────────────────────────────
+	@ManyToOne(() => Category, {
+		nullable: true,
+		onDelete: 'SET NULL',
+	})
 	@JoinColumn({ name: 'category_id' })
-	category?: Category;
+	category: Category | null;
 
-	@Column('decimal', { name: 'amount', precision: 18, scale: 2 })
+	// ─── Amount, Description, Date ────────────────────
+
+	@Column('decimal', {
+		name: 'amount',
+		precision: 18,
+		scale: 2,
+	})
 	@IsNumber()
 	amount: number;
 
-	@Column({ name: 'description', type: 'text', nullable: true })
+	@Column({
+		name: 'description',
+		type: 'text',
+		nullable: true,
+	})
 	@IsOptional()
 	@IsString()
 	description?: string | null;

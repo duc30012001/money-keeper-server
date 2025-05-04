@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
-import { CategoryType } from '../enums/action-type.enum';
+import { CategoryType } from '../category.enum';
 
 export class FindCategoriesDto {
 	@ApiProperty({
