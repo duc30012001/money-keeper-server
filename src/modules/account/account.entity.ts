@@ -20,20 +20,20 @@ export class Account extends BaseEntity {
 		type: 'decimal',
 		precision: 18,
 		// scale: 2,
-		default: 0,
+		default: '0',
 	})
-	@IsNumber()
-	initialBalance: number;
+	// @IsNumber()
+	initialBalance: string;
 
 	@Column({
 		name: 'balance',
 		type: 'decimal',
 		precision: 18,
 		// scale: 2,
-		default: 0,
+		default: '0',
 	})
-	@IsNumber()
-	balance: number;
+	// @IsNumber()
+	balance: string;
 
 	@Column({ name: 'sort_order', type: 'int', default: 1 })
 	@IsNumber()

@@ -11,7 +11,6 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { AccountTypeService } from '../../account-type/account-type.service';
-import { CategoryType } from '../../category/category.enum';
 import { Account } from '../account.entity';
 import { CreateAccountDto } from '../dtos/create-account.dto';
 import { FindAccountDto } from '../dtos/find-account.dto';
@@ -97,7 +96,8 @@ export class AccountService {
 
 		const account = this.accountRepository.create({
 			...createAccountDto,
-			balance: createAccountDto.initialBalance,
+			initialBalance: createAccountDto.initialBalance?.toString() ?? '0',
+			balance: createAccountDto.initialBalance?.toString() ?? '0',
 		});
 		account.accountType = accountType;
 
@@ -139,11 +139,14 @@ export class AccountService {
 		// 3) initialBalance change → adjust balance by the delta
 		if (
 			updateAccountDto.initialBalance !== undefined &&
-			updateAccountDto.initialBalance !== account.initialBalance
+			parseFloat(updateAccountDto.initialBalance.toString()) !==
+				parseFloat(account.initialBalance)
 		) {
 			const delta =
-				updateAccountDto.initialBalance - account.initialBalance;
-			account.balance += delta;
+				parseFloat(updateAccountDto.initialBalance.toString()) -
+				parseFloat(account.initialBalance);
+			const newBalance = Number(account.balance) + delta;
+			account.balance = newBalance.toString();
 		}
 
 		// 4) copy over any other fields (including initialBalance)
@@ -199,26 +202,5 @@ export class AccountService {
 				name: 'ASC',
 			},
 		});
-	}
-
-	async updateBalance(
-		id: string,
-		amount: number,
-		type: CategoryType,
-	): Promise<Account> {
-		const account = await this.findOne(id);
-		switch (type) {
-			case CategoryType.INCOME:
-				account.balance += amount;
-				break;
-			case CategoryType.EXPENSE:
-				account.balance -= amount;
-				break;
-			default:
-				// throw new BadRequestException('Invalid action type');
-				break;
-		}
-		await this.accountRepository.save(account);
-		return this.findOne(id);
 	}
 }

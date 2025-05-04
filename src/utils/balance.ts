@@ -1,8 +1,8 @@
 import { CategoryType } from 'src/modules/category/category.enum';
 
 export const calculateBalance = (
-	currentBalance: number,
-	amount: number,
+	currentBalance: number | string,
+	amount: number | string,
 	type: CategoryType,
 ) => {
 	switch (type) {

@@ -22,13 +22,17 @@ import { CreateAccountDto } from './dtos/create-account.dto';
 import { FindAccountDto } from './dtos/find-account.dto';
 import { UpdateAccountDto } from './dtos/update-account.dto';
 import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
+import { AccountBalanceService } from './services/account-balance.service';
 import { AccountService } from './services/account.service';
 
 @ApiTags('Accounts')
 @Controller('accounts')
 @UseInterceptors(ClassSerializerInterceptor)
 export class AccountController {
-	constructor(private readonly accountService: AccountService) {}
+	constructor(
+		private readonly accountService: AccountService,
+		private readonly accountBalanceService: AccountBalanceService,
+	) {}
 
 	@Get()
 	@ApiOperation({ summary: 'Get all accounts' })
@@ -36,6 +40,13 @@ export class AccountController {
 		@Query() findAccountDto: FindAccountDto,
 	): Promise<PaginatedResponseDto<Account>> {
 		return this.accountService.findAll(findAccountDto);
+	}
+
+	@Get('total-balance')
+	@ApiOperation({ summary: 'Get total balance of all accounts' })
+	async getTotalBalance(): Promise<ResponseDto<number>> {
+		const data = await this.accountBalanceService.getTotalBalance();
+		return new ResponseDto(data);
 	}
 
 	@Get(':id')
