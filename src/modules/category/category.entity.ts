@@ -52,7 +52,7 @@ export class Category extends BaseEntity {
 	@JoinColumn({ name: 'parent_id' })
 	@Expose()
 	@Type(() => Category)
-	parent?: Category;
+	parent: Category | null;
 
 	@TreeChildren({ cascade: true })
 	@Expose()

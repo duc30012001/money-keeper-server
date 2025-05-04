@@ -64,7 +64,7 @@ export class CategoryService {
 			while (p) {
 				if (ancestorIds.has(p.id)) break;
 				ancestorIds.add(p.id);
-				p = idToCat.get(p.id)?.parent ?? undefined;
+				p = idToCat.get(p.id)?.parent ?? null;
 			}
 		}
 
@@ -199,7 +199,7 @@ export class CategoryService {
 		// Parent: null → gỡ, id → set, undefined → giữ nguyên
 		if (dto.parentId !== undefined) {
 			if (dto.parentId === null) {
-				category.parent = undefined;
+				category.parent = null;
 			} else {
 				const parent = await this.treeRepo.findOne({
 					where: { id: dto.parentId },
