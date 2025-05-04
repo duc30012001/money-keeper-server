@@ -53,6 +53,7 @@ export class AccountService {
 
 		// ordering: first by accountType.sortOrder, then by account.sortOrder
 		qb.orderBy('accountType.sortOrder', 'ASC')
+			.addOrderBy('accountType.name', 'ASC')
 			.addOrderBy('account.sortOrder', 'ASC')
 			.addOrderBy('account.name', 'ASC')
 			.skip(skip)
@@ -195,6 +196,7 @@ export class AccountService {
 			where: { id: In(updateSortOrderDto.ids) },
 			order: {
 				sortOrder: 'ASC',
+				name: 'ASC',
 			},
 		});
 	}

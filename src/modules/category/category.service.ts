@@ -37,6 +37,7 @@ export class CategoryService {
 			order: {
 				type: 'ASC',
 				sortOrder: 'ASC',
+				name: 'ASC',
 			},
 		});
 

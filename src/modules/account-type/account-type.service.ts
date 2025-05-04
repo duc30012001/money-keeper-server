@@ -142,6 +142,7 @@ export class AccountTypeService {
 			where: { id: In(updateSortOrderDto.ids) },
 			order: {
 				sortOrder: 'ASC',
+				name: 'ASC',
 			},
 		});
 	}
