@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
-import { ArrayNotEmpty, IsBoolean, IsEnum, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import {
 	CsvDateRange,
 	CsvEnumArray,
@@ -105,6 +105,6 @@ export class FindTransactionDto extends BaseQueryDto {
 	@IsOptional()
 	// @ValidateNested({ each: true })
 	@Type(() => FindTransactionSortDto)
-	@ArrayNotEmpty()
+	// @ArrayNotEmpty()
 	sort?: FindTransactionSortDto[];
 }

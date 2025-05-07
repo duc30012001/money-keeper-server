@@ -28,7 +28,7 @@ export class AccountService {
 	async findAll(
 		findAccountDto: FindAccountDto,
 	): Promise<PaginatedResponseDto<Account>> {
-		const { skip, pageSize, page, keyword, accountTypeIds } =
+		const { skip, pageSize, page, keyword, accountTypeIds, sort } =
 			findAccountDto;
 
 		const qb = this.accountRepository
@@ -50,8 +50,13 @@ export class AccountService {
 			qb.andWhere('accountType.id IN (:...ids)', { ids: accountTypeIds });
 		}
 
+		if (sort?.length) {
+			sort.forEach(({ id, desc }) => {
+				qb.addOrderBy(`account.${id}`, desc ? 'DESC' : 'ASC');
+			});
+		}
 		// ordering: first by accountType.sortOrder, then by account.sortOrder
-		qb.orderBy('accountType.sortOrder', 'ASC')
+		qb.addOrderBy('accountType.sortOrder', 'ASC')
 			.addOrderBy('accountType.name', 'ASC')
 			.addOrderBy('account.sortOrder', 'ASC')
 			.addOrderBy('account.name', 'ASC')
