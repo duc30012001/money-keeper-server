@@ -17,17 +17,28 @@ import {
 	PaginatedResponseDto,
 	ResponseDto,
 } from 'src/common/dtos/response.dto';
+import { AnalyticTransactionDto } from './dtos/analytic-transaction.dto';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { FindTransactionDto } from './dtos/find-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
+import {
+	AnalyticResult,
+	ChartResult,
+	ExpenseByParentCategoryResult,
+	IncomeByParentCategoryResult,
+} from './interfaces/transaction.interface';
+import { TransactionAnalyticService } from './services/transaction-analytic.service';
+import { TransactionService } from './services/transaction.service';
 import { Transaction } from './transaction.entity';
-import { TransactionService } from './transaction.service';
 
 @ApiTags('Transactions')
 @Controller('transactions')
 @UseInterceptors(ClassSerializerInterceptor)
 export class TransactionController {
-	constructor(private readonly transactionService: TransactionService) {}
+	constructor(
+		private readonly transactionService: TransactionService,
+		private readonly transactionAnalyticService: TransactionAnalyticService,
+	) {}
 
 	@Get()
 	@ApiOperation({ summary: 'Get all transactions' })
@@ -35,6 +46,53 @@ export class TransactionController {
 		@Query() findTransactionDto: FindTransactionDto,
 	): Promise<PaginatedResponseDto<Transaction>> {
 		return this.transactionService.findAll(findTransactionDto);
+	}
+
+	@Get('analytics')
+	@ApiOperation({ summary: 'Get analytics for transactions' })
+	async getAnalytics(
+		@Query() analyticTransactionDto: AnalyticTransactionDto,
+	): Promise<ResponseDto<AnalyticResult>> {
+		const data = await this.transactionAnalyticService.getAnalytics(
+			analyticTransactionDto,
+		);
+		return new ResponseDto(data);
+	}
+
+	@Get('chart')
+	@ApiOperation({ summary: 'Get chart data for transactions' })
+	async getChart(
+		@Query() analyticTransactionDto: AnalyticTransactionDto,
+	): Promise<ResponseDto<ChartResult[]>> {
+		const data =
+			await this.transactionAnalyticService.getMonthlyIncomeExpense(
+				analyticTransactionDto,
+			);
+		return new ResponseDto(data);
+	}
+
+	@Get('expense-by-parent-categories')
+	@ApiOperation({ summary: 'Get expense by parent categories' })
+	async getExpenseByParentCategories(
+		@Query() analyticTransactionDto: AnalyticTransactionDto,
+	): Promise<ResponseDto<ExpenseByParentCategoryResult[]>> {
+		const data =
+			await this.transactionAnalyticService.getExpenseByParentCategories(
+				analyticTransactionDto,
+			);
+		return new ResponseDto(data);
+	}
+
+	@Get('income-by-parent-categories')
+	@ApiOperation({ summary: 'Get income by parent categories' })
+	async getIncomeByParentCategories(
+		@Query() analyticTransactionDto: AnalyticTransactionDto,
+	): Promise<ResponseDto<IncomeByParentCategoryResult[]>> {
+		const data =
+			await this.transactionAnalyticService.getIncomeByParentCategories(
+				analyticTransactionDto,
+			);
+		return new ResponseDto(data);
 	}
 
 	@Get(':id')

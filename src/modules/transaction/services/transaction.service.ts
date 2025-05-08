@@ -10,16 +10,16 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { Account } from 'src/modules/account/account.entity';
+import { AccountBalanceService } from 'src/modules/account/services/account-balance.service';
+import { Category } from 'src/modules/category/category.entity';
+import { CategoryType } from 'src/modules/category/category.enum';
+import { CreateTransactionDto } from 'src/modules/transaction/dtos/create-transaction.dto';
+import { FindTransactionDto } from 'src/modules/transaction/dtos/find-transaction.dto';
+import { UpdateTransactionDto } from 'src/modules/transaction/dtos/update-transaction.dto';
+import { Transaction } from 'src/modules/transaction/transaction.entity';
+import { TransactionType } from 'src/modules/transaction/transaction.enum';
 import { DataSource, EntityManager } from 'typeorm';
-import { Account } from '../account/account.entity';
-import { AccountBalanceService } from '../account/services/account-balance.service';
-import { Category } from '../category/category.entity';
-import { CategoryType } from '../category/category.enum';
-import { CreateTransactionDto } from './dtos/create-transaction.dto';
-import { FindTransactionDto } from './dtos/find-transaction.dto';
-import { UpdateTransactionDto } from './dtos/update-transaction.dto';
-import { Transaction } from './transaction.entity';
-import { TransactionType } from './transaction.enum';
 
 @Injectable()
 export class TransactionService {
@@ -230,8 +230,7 @@ export class TransactionService {
 			type: dto.type,
 			account,
 			category,
-			amount:
-				dto.type === TransactionType.EXPENSE ? -dto.amount : dto.amount,
+			amount: dto.amount,
 			description: dto.description,
 			transactionDate: dto.transactionDate,
 		});

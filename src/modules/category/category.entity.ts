@@ -58,10 +58,4 @@ export class Category extends BaseEntity {
 	@Expose()
 	@Type(() => Category)
 	children: Category[];
-
-	// @Expose()
-	// get depth(): number {
-	// 	if (!this.parent) return 0;
-	// 	return this.parent.depth + 1;
-	// }
 }
