@@ -1,6 +1,7 @@
 version: '3.8'
 services:
     api:
+        image: money-keeper-server:latest
         build: .
         # pull the port number from $APP_PORT for both host and container
         ports:
