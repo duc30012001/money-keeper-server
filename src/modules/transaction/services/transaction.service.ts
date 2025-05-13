@@ -337,8 +337,7 @@ export class TransactionService {
 			tx.category = newCategory;
 			tx.senderAccount = null;
 			tx.receiverAccount = null;
-			tx.amount =
-				newCategory.type === CategoryType.EXPENSE ? -newAmt : newAmt;
+			tx.amount = newAmt;
 		}
 
 		// common patches
