@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { AnalyticTransactionDto } from '../dtos/analytic-transaction.dto';
 import {
 	AnalyticResult,
@@ -18,12 +18,17 @@ export class TransactionAnalyticService {
 		private readonly transactionRepo: Repository<Transaction>,
 	) {}
 
-	async getAnalytics(dto: AnalyticTransactionDto): Promise<AnalyticResult> {
+	async getAnalytics(
+		analyticTransactionDto: AnalyticTransactionDto,
+	): Promise<AnalyticResult> {
+		const { transactionDate, accountIds, categoryIds } =
+			analyticTransactionDto;
+
 		// 1. Determine date range
 		const now = new Date();
 		const [start, end] =
-			dto.transactionDate && dto.transactionDate.length === 2
-				? dto.transactionDate
+			transactionDate && transactionDate.length === 2
+				? transactionDate
 				: [
 						new Date(now.getFullYear(), now.getMonth(), 1),
 						new Date(
@@ -43,15 +48,35 @@ export class TransactionAnalyticService {
 			from: Date,
 			to: Date,
 		): Promise<number> => {
-			const data = await this.transactionRepo
+			const qb = this.transactionRepo
 				.createQueryBuilder('t')
+				.leftJoin('t.account', 'account')
+				.leftJoin('t.category', 'category')
 				.select('SUM(t.amount)', 'sum')
 				.where('t.type = :type', { type })
 				.andWhere('t.transactionDate BETWEEN :from AND :to', {
 					from,
 					to,
-				})
-				.getRawOne<{ sum: string }>();
+				});
+
+			if (accountIds?.length) {
+				qb.andWhere('account.id IN(:...accountIds)', { accountIds });
+			}
+			if (categoryIds?.length) {
+				qb.andWhere(
+					new Brackets((subQb) => {
+						subQb
+							.andWhere('category.id IN(:...categoryIds)', {
+								categoryIds,
+							})
+							.orWhere('category.parent_id IN(:...categoryIds)', {
+								categoryIds,
+							});
+					}),
+				);
+			}
+
+			const data = await qb.getRawOne<{ sum: string }>();
 			return parseFloat(data?.sum || '0');
 		};
 
@@ -101,13 +126,15 @@ export class TransactionAnalyticService {
 	}
 
 	async getMonthlyIncomeExpense(
-		dto: AnalyticTransactionDto,
+		analyticTransactionDto: AnalyticTransactionDto,
 	): Promise<ChartResult[]> {
+		const { transactionDate, accountIds, categoryIds } =
+			analyticTransactionDto;
 		// 1) date range
 		const now = new Date();
 		const [from, to] =
-			dto.transactionDate && dto.transactionDate.length === 2
-				? dto.transactionDate
+			transactionDate && transactionDate.length === 2
+				? transactionDate
 				: [
 						// default: start of current month
 						new Date(now.getFullYear(), now.getMonth(), 1),
@@ -124,8 +151,10 @@ export class TransactionAnalyticService {
 					];
 
 		// 2) build query
-		const qb = this.transactionRepo
+		const queryBuilder = this.transactionRepo
 			.createQueryBuilder('t')
+			.leftJoin('t.account', 'account')
+			.leftJoin('t.category', 'category')
 			// format month label: e.g. "May 2025"
 			.select(
 				`to_char(date_trunc('month', t.transactionDate), 'Mon YYYY')`,
@@ -149,19 +178,27 @@ export class TransactionAnalyticService {
 			});
 
 		// 3) apply optional filters
-		if (dto.accountIds?.length) {
-			qb.andWhere('t.account_id IN (:...accountIds)', {
-				accountIds: dto.accountIds,
+		if (accountIds?.length) {
+			queryBuilder.andWhere('account.id IN(:...accountIds)', {
+				accountIds,
 			});
 		}
-		if (dto.categoryIds?.length) {
-			qb.andWhere('t.category_id IN (:...categoryIds)', {
-				categoryIds: dto.categoryIds,
-			});
+		if (categoryIds?.length) {
+			queryBuilder.andWhere(
+				new Brackets((subQb) => {
+					subQb
+						.andWhere('category.id IN(:...categoryIds)', {
+							categoryIds,
+						})
+						.orWhere('category.parent_id IN(:...categoryIds)', {
+							categoryIds,
+						});
+				}),
+			);
 		}
 
 		// 4) group & order by month
-		const rows = await qb
+		const rows = await queryBuilder
 			.groupBy(`date_trunc('month', t.transactionDate)`)
 			.orderBy(`date_trunc('month', t.transactionDate)`, 'ASC')
 			.setParameters({
@@ -183,13 +220,15 @@ export class TransactionAnalyticService {
 	}
 
 	async getExpenseByParentCategories(
-		dto: AnalyticTransactionDto,
+		analyticTransactionDto: AnalyticTransactionDto,
 	): Promise<ExpenseByParentCategoryResult[]> {
+		const { transactionDate, accountIds, categoryIds } =
+			analyticTransactionDto;
 		// 1) Date range
 		const now = new Date();
 		const [from, to] =
-			dto.transactionDate?.length === 2
-				? dto.transactionDate
+			transactionDate?.length === 2
+				? transactionDate
 				: [
 						new Date(now.getFullYear(), now.getMonth(), 1),
 						new Date(
@@ -204,8 +243,9 @@ export class TransactionAnalyticService {
 					];
 
 		// 2) Build the query
-		const qb = this.transactionRepo
+		const queryBuilder = this.transactionRepo
 			.createQueryBuilder('t')
+			.leftJoin('t.account', 'account')
 			.select(`COALESCE(parent.name, category.name)`, 'label')
 			.addSelect(`SUM(t.amount)`, 'expense')
 			.leftJoin('t.category', 'category')
@@ -214,19 +254,27 @@ export class TransactionAnalyticService {
 			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
 
 		// 3) Optional DTO filters
-		if (dto.accountIds?.length) {
-			qb.andWhere('t.account_id IN (:...accountIds)', {
-				accountIds: dto.accountIds,
+		if (accountIds?.length) {
+			queryBuilder.andWhere('account.id IN(:...accountIds)', {
+				accountIds,
 			});
 		}
-		if (dto.categoryIds?.length) {
-			qb.andWhere('category.id IN (:...categoryIds)', {
-				categoryIds: dto.categoryIds,
-			});
+		if (categoryIds?.length) {
+			queryBuilder.andWhere(
+				new Brackets((subQb) => {
+					subQb
+						.andWhere('category.id IN(:...categoryIds)', {
+							categoryIds,
+						})
+						.orWhere('category.parent_id IN(:...categoryIds)', {
+							categoryIds,
+						});
+				}),
+			);
 		}
 
 		// 4) Group & order
-		const raw = await qb
+		const raw = await queryBuilder
 			.groupBy(`COALESCE(parent.name, category.name)`)
 			.orderBy('expense', 'DESC')
 			.getRawMany<{ label: string; expense: string }>();
@@ -250,13 +298,15 @@ export class TransactionAnalyticService {
 	}
 
 	async getIncomeByParentCategories(
-		dto: AnalyticTransactionDto,
+		analyticTransactionDto: AnalyticTransactionDto,
 	): Promise<IncomeByParentCategoryResult[]> {
+		const { transactionDate, accountIds, categoryIds } =
+			analyticTransactionDto;
 		// 1) Date range
 		const now = new Date();
 		const [from, to] =
-			dto.transactionDate?.length === 2
-				? dto.transactionDate
+			transactionDate?.length === 2
+				? transactionDate
 				: [
 						new Date(now.getFullYear(), now.getMonth(), 1),
 						new Date(
@@ -271,8 +321,9 @@ export class TransactionAnalyticService {
 					];
 
 		// 2) Build the query
-		const qb = this.transactionRepo
+		const queryBuilder = this.transactionRepo
 			.createQueryBuilder('t')
+			.leftJoin('t.account', 'account')
 			.select(`COALESCE(parent.name, category.name)`, 'label')
 			.addSelect(`SUM(t.amount)`, 'income')
 			.leftJoin('t.category', 'category')
@@ -281,19 +332,27 @@ export class TransactionAnalyticService {
 			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
 
 		// 3) Optional DTO filters
-		if (dto.accountIds?.length) {
-			qb.andWhere('t.account_id IN (:...accountIds)', {
-				accountIds: dto.accountIds,
+		if (accountIds?.length) {
+			queryBuilder.andWhere('account.id IN(:...accountIds)', {
+				accountIds,
 			});
 		}
-		if (dto.categoryIds?.length) {
-			qb.andWhere('category.id IN (:...categoryIds)', {
-				categoryIds: dto.categoryIds,
-			});
+		if (categoryIds?.length) {
+			queryBuilder.andWhere(
+				new Brackets((subQb) => {
+					subQb
+						.andWhere('category.id IN(:...categoryIds)', {
+							categoryIds,
+						})
+						.orWhere('category.parent_id IN(:...categoryIds)', {
+							categoryIds,
+						});
+				}),
+			);
 		}
 
 		// 4) Group & order
-		const raw = await qb
+		const raw = await queryBuilder
 			.groupBy(`COALESCE(parent.name, category.name)`)
 			.orderBy('income', 'DESC')
 			.getRawMany<{ label: string; income: string }>();
