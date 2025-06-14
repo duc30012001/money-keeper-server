@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { getDateRange } from 'src/utils/date';
 import { Brackets, Repository } from 'typeorm';
 import { AnalyticTransactionDto } from '../dtos/analytic-transaction.dto';
 import {
@@ -25,22 +26,7 @@ export class TransactionAnalyticService {
 			analyticTransactionDto;
 
 		// 1. Determine date range
-		const now = new Date();
-		const [start, end] =
-			transactionDate && transactionDate.length === 2
-				? transactionDate
-				: [
-						new Date(now.getFullYear(), now.getMonth(), 1),
-						new Date(
-							now.getFullYear(),
-							now.getMonth() + 1,
-							0,
-							23,
-							59,
-							59,
-							999,
-						),
-					];
+		const [start, end] = getDateRange(transactionDate);
 
 		// 2. Helper to sum by type
 		const sumByType = async (
@@ -131,24 +117,7 @@ export class TransactionAnalyticService {
 		const { transactionDate, accountIds, categoryIds } =
 			analyticTransactionDto;
 		// 1) date range
-		const now = new Date();
-		const [from, to] =
-			transactionDate && transactionDate.length === 2
-				? transactionDate
-				: [
-						// default: start of current month
-						new Date(now.getFullYear(), now.getMonth(), 1),
-						// end of current month
-						new Date(
-							now.getFullYear(),
-							now.getMonth() + 1,
-							0,
-							23,
-							59,
-							59,
-							999,
-						),
-					];
+		const [from, to] = getDateRange(transactionDate);
 
 		// 2) build query
 		const queryBuilder = this.transactionRepo
@@ -225,22 +194,7 @@ export class TransactionAnalyticService {
 		const { transactionDate, accountIds, categoryIds } =
 			analyticTransactionDto;
 		// 1) Date range
-		const now = new Date();
-		const [from, to] =
-			transactionDate?.length === 2
-				? transactionDate
-				: [
-						new Date(now.getFullYear(), now.getMonth(), 1),
-						new Date(
-							now.getFullYear(),
-							now.getMonth() + 1,
-							0,
-							23,
-							59,
-							59,
-							999,
-						),
-					];
+		const [from, to] = getDateRange(transactionDate);
 
 		// 2) Build the query
 		const queryBuilder = this.transactionRepo
@@ -250,7 +204,7 @@ export class TransactionAnalyticService {
 			.addSelect(`SUM(t.amount)`, 'expense')
 			.leftJoin('t.category', 'category')
 			.leftJoin('category.parent', 'parent')
-			.where('t.type = :exp', { exp: TransactionType.EXPENSE })
+			.where('t.type = :type', { type: TransactionType.EXPENSE })
 			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
 
 		// 3) Optional DTO filters
@@ -274,10 +228,13 @@ export class TransactionAnalyticService {
 		}
 
 		// 4) Group & order
-		const raw = await queryBuilder
+		queryBuilder
 			.groupBy(`COALESCE(parent.name, category.name)`)
-			.orderBy('expense', 'DESC')
-			.getRawMany<{ label: string; expense: string }>();
+			.orderBy('expense', 'DESC');
+		const raw = await queryBuilder.getRawMany<{
+			label: string;
+			expense: string;
+		}>();
 
 		// 5) Map and roll-up “Other” if needed
 		const data = raw.map((r) => ({
@@ -303,22 +260,7 @@ export class TransactionAnalyticService {
 		const { transactionDate, accountIds, categoryIds } =
 			analyticTransactionDto;
 		// 1) Date range
-		const now = new Date();
-		const [from, to] =
-			transactionDate?.length === 2
-				? transactionDate
-				: [
-						new Date(now.getFullYear(), now.getMonth(), 1),
-						new Date(
-							now.getFullYear(),
-							now.getMonth() + 1,
-							0,
-							23,
-							59,
-							59,
-							999,
-						),
-					];
+		const [from, to] = getDateRange(transactionDate);
 
 		// 2) Build the query
 		const queryBuilder = this.transactionRepo
@@ -328,7 +270,7 @@ export class TransactionAnalyticService {
 			.addSelect(`SUM(t.amount)`, 'income')
 			.leftJoin('t.category', 'category')
 			.leftJoin('category.parent', 'parent')
-			.where('t.type = :inc', { inc: TransactionType.INCOME })
+			.where('t.type = :type', { type: TransactionType.INCOME })
 			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
 
 		// 3) Optional DTO filters

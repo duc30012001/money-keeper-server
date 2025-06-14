@@ -10,12 +10,14 @@ import {
 	Column,
 	Entity,
 	JoinColumn,
+	OneToMany,
 	Tree,
 	TreeChildren,
 	TreeParent,
 } from 'typeorm';
 
 import { BaseEntity } from 'src/common/entities/base.entity';
+import { Transaction } from '../transaction/transaction.entity';
 import { CategoryType } from './category.enum';
 
 @Entity('categories')
@@ -58,4 +60,7 @@ export class Category extends BaseEntity {
 	@Expose()
 	@Type(() => Category)
 	children: Category[];
+
+	@OneToMany(() => Transaction, (transaction) => transaction.category)
+	transaction: Transaction[];
 }

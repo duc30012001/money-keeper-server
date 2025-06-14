@@ -18,17 +18,23 @@ import {
 	ResponseDto,
 } from 'src/common/dtos/response.dto';
 import { Category } from './category.entity';
-import { CategoryService } from './category.service';
+import { CategoryType } from './category.enum';
+import { AnalyticCategoryDto } from './dtos/analytic-category.dto';
 import { CreateCategoryDto } from './dtos/create-category.dto';
 import { FindCategoriesDto } from './dtos/find-categories.dto';
 import { UpdateCategoryDto } from './dtos/update-category.dto';
 import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
+import { CategoryAnalyticService } from './services/category-analytic.service';
+import { CategoryService } from './services/category.service';
 
 @ApiTags('Categories')
 @Controller('categories')
 @UseInterceptors(ClassSerializerInterceptor)
 export class CategoryController {
-	constructor(private readonly categoryService: CategoryService) {}
+	constructor(
+		private readonly categoryService: CategoryService,
+		private readonly categoryAnalyticService: CategoryAnalyticService,
+	) {}
 
 	@Get()
 	@ApiOperation({ summary: 'Get all categories' })
@@ -36,6 +42,19 @@ export class CategoryController {
 		@Query() query: FindCategoriesDto,
 	): Promise<PaginatedResponseDto<Category>> {
 		return this.categoryService.findAll(query);
+	}
+
+	@Get('analytic/:type')
+	@ApiOperation({ summary: 'Get category analytic by type' })
+	@ApiParam({
+		name: 'type',
+		description: 'Category type',
+	})
+	async getAnalytic(
+		@Param('type') type: CategoryType,
+		@Query() query: AnalyticCategoryDto,
+	) {
+		return this.categoryAnalyticService.getAnalytic(type, query);
 	}
 
 	@Get(':id')

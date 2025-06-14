@@ -12,17 +12,17 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { buildTree, TreeNode } from 'src/utils/build-tree';
-import { Category } from './category.entity';
-import { CreateCategoryDto } from './dtos/create-category.dto';
-import { FindCategoriesDto } from './dtos/find-categories.dto';
-import { UpdateCategoryDto } from './dtos/update-category.dto';
-import { UpdateSortOrderDto } from './dtos/update-sort-order.dto';
+import { Category } from '../category.entity';
+import { CreateCategoryDto } from '../dtos/create-category.dto';
+import { FindCategoriesDto } from '../dtos/find-categories.dto';
+import { UpdateCategoryDto } from '../dtos/update-category.dto';
+import { UpdateSortOrderDto } from '../dtos/update-sort-order.dto';
 
 @Injectable()
 export class CategoryService {
 	constructor(
 		@InjectRepository(Category)
-		private readonly treeRepo: TreeRepository<Category>,
+		private readonly categoryTreeRepo: TreeRepository<Category>,
 	) {}
 
 	async findAll(
@@ -32,7 +32,7 @@ export class CategoryService {
 		const { keyword, type } = query ?? {};
 
 		// 2. Lấy toàn bộ categories flat kèm relation parent
-		const allCats = await this.treeRepo.find({
+		const allCats = await this.categoryTreeRepo.find({
 			relations: ['parent'],
 			order: {
 				type: 'ASC',
@@ -95,14 +95,14 @@ export class CategoryService {
 
 	/** Lấy một node cùng toàn bộ descendants */
 	async findOne(id: string): Promise<Category> {
-		const node = await this.treeRepo.findOne({
+		const node = await this.categoryTreeRepo.findOne({
 			where: { id },
 			relations: ['parent'],
 		});
 		if (!node) {
 			throw new NotFoundException(`Category with ID ${id} not found`);
 		}
-		const tree = await this.treeRepo.findDescendantsTree(node, {
+		const tree = await this.categoryTreeRepo.findDescendantsTree(node, {
 			relations: ['parent'],
 		});
 		return tree;
@@ -111,7 +111,7 @@ export class CategoryService {
 	/** Tạo mới, gán parent nếu có và tự động lưu closure-table */
 	async create(dto: CreateCategoryDto): Promise<Category> {
 		// Check duplicate name
-		const dup = await this.treeRepo.findOne({
+		const dup = await this.categoryTreeRepo.findOne({
 			where: { name: dto.name },
 		});
 		if (dup) {
@@ -123,7 +123,7 @@ export class CategoryService {
 		// Check parent's type if parent exists
 		let parent: Category | undefined;
 		if (dto.parentId) {
-			const foundParent = await this.treeRepo.findOne({
+			const foundParent = await this.categoryTreeRepo.findOne({
 				where: { id: dto.parentId },
 			});
 			if (!foundParent) {
@@ -139,7 +139,7 @@ export class CategoryService {
 			parent = foundParent;
 		}
 
-		const category = this.treeRepo.create({
+		const category = this.categoryTreeRepo.create({
 			name: dto.name,
 			icon: dto.icon,
 			type: dto.type,
@@ -151,20 +151,20 @@ export class CategoryService {
 			category.parent = parent;
 		}
 
-		const saved = await this.treeRepo.save(category);
+		const saved = await this.categoryTreeRepo.save(category);
 		return this.findOne(saved.id);
 	}
 
 	/** Cập nhật thông tin và parent */
 	async update(id: string, dto: UpdateCategoryDto): Promise<Category> {
-		const category = await this.treeRepo.findOne({ where: { id } });
+		const category = await this.categoryTreeRepo.findOne({ where: { id } });
 		if (!category) {
 			throw new NotFoundException(`Category with ID ${id} not found`);
 		}
 
 		// Đổi tên nếu cần và check duplicate
 		if (dto.name && dto.name !== category.name) {
-			const dup = await this.treeRepo.findOne({
+			const dup = await this.categoryTreeRepo.findOne({
 				where: { name: dto.name },
 			});
 			if (dup) {
@@ -178,7 +178,8 @@ export class CategoryService {
 		// Check type change
 		if (dto.type !== undefined && dto.type !== category.type) {
 			// Check if has children
-			const children = await this.treeRepo.findDescendants(category);
+			const children =
+				await this.categoryTreeRepo.findDescendants(category);
 			if (children.length > 1) {
 				// includes itself
 				throw new BadRequestException(
@@ -202,7 +203,7 @@ export class CategoryService {
 			if (dto.parentId === null) {
 				category.parent = null;
 			} else {
-				const parent = await this.treeRepo.findOne({
+				const parent = await this.categoryTreeRepo.findOne({
 					where: { id: dto.parentId },
 				});
 				if (!parent) {
@@ -226,24 +227,24 @@ export class CategoryService {
 			category.description = dto.description;
 		if (dto.sortOrder !== undefined) category.sortOrder = dto.sortOrder;
 
-		await this.treeRepo.save(category);
+		await this.categoryTreeRepo.save(category);
 		return this.findOne(id);
 	}
 
 	/** Xóa node (cascade với cây) */
 	async remove(id: string): Promise<void> {
-		const category = await this.treeRepo.findOne({ where: { id } });
+		const category = await this.categoryTreeRepo.findOne({ where: { id } });
 		if (!category) {
 			throw new NotFoundException(`Category with ID ${id} not found`);
 		}
-		await this.treeRepo.remove(category);
+		await this.categoryTreeRepo.remove(category);
 	}
 
 	/** Cập nhật sortOrder dùng QueryBuilder hoặc map rồi save lại */
 	async updateSortOrder(dto: UpdateSortOrderDto): Promise<Category[]> {
 		// Tương tự như trước, hoặc bạn có thể
 		// load toàn bộ tree rồi set .sortOrder rồi save từng phần
-		await this.treeRepo
+		await this.categoryTreeRepo
 			.createQueryBuilder()
 			.update(Category)
 			.set({
@@ -256,6 +257,6 @@ export class CategoryService {
 			.execute();
 
 		// Trả về cây đã sắp xếp lại
-		return this.treeRepo.findTrees();
+		return this.categoryTreeRepo.findTrees();
 	}
 }
