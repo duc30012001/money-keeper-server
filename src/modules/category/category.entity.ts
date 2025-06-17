@@ -10,6 +10,7 @@ import {
 	Column,
 	Entity,
 	JoinColumn,
+	ManyToOne,
 	OneToMany,
 	Tree,
 	TreeChildren,
@@ -17,6 +18,7 @@ import {
 } from 'typeorm';
 
 import { BaseEntity } from 'src/common/entities/base.entity';
+import { Icon } from '../icon/icon.entity';
 import { Transaction } from '../transaction/transaction.entity';
 import { CategoryType } from './category.enum';
 
@@ -27,11 +29,6 @@ export class Category extends BaseEntity {
 	@IsNotEmpty()
 	@IsString()
 	name: string;
-
-	@Column({ name: 'icon', nullable: true })
-	@IsOptional()
-	@IsString()
-	icon?: string;
 
 	@Column({
 		type: 'enum',
@@ -63,4 +60,8 @@ export class Category extends BaseEntity {
 
 	@OneToMany(() => Transaction, (transaction) => transaction.category)
 	transaction: Transaction[];
+
+	@ManyToOne(() => Icon)
+	@JoinColumn({ name: 'icon_id' })
+	icon: Icon;
 }

@@ -10,6 +10,7 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { IconService } from 'src/modules/icon/icon.service';
 import { AccountTypeService } from '../../account-type/account-type.service';
 import { Account } from '../account.entity';
 import { CreateAccountDto } from '../dtos/create-account.dto';
@@ -23,6 +24,7 @@ export class AccountService {
 		@InjectRepository(Account)
 		private readonly accountRepository: Repository<Account>,
 		private readonly accountTypeService: AccountTypeService,
+		private readonly iconService: IconService,
 	) {}
 
 	async findAll(
@@ -99,12 +101,15 @@ export class AccountService {
 			createAccountDto.accountTypeId,
 		);
 
+		const icon = await this.iconService.findOne(createAccountDto.iconId);
+
 		const account = this.accountRepository.create({
 			...createAccountDto,
 			initialBalance: createAccountDto.initialBalance?.toString() ?? '0',
 			balance: createAccountDto.initialBalance?.toString() ?? '0',
+			accountType,
+			icon,
 		});
-		account.accountType = accountType;
 
 		return this.accountRepository.save(account);
 	}
@@ -141,7 +146,18 @@ export class AccountService {
 			account.accountType = acctType;
 		}
 
-		// 3) initialBalance change → adjust balance by the delta
+		// 3) icon change
+		if (
+			updateAccountDto.iconId &&
+			updateAccountDto.iconId !== account.icon.id
+		) {
+			const icon = await this.iconService.findOne(
+				updateAccountDto.iconId,
+			);
+			account.icon = icon;
+		}
+
+		// 4) initialBalance change → adjust balance by the delta
 		if (
 			updateAccountDto.initialBalance !== undefined &&
 			parseFloat(updateAccountDto.initialBalance.toString()) !==
@@ -154,7 +170,7 @@ export class AccountService {
 			account.balance = newBalance.toString();
 		}
 
-		// 4) copy over any other fields (including initialBalance)
+		// 5) copy over any other fields (including initialBalance)
 		Object.assign(account, updateAccountDto);
 
 		await this.accountRepository.save(account);

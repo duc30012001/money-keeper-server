@@ -12,6 +12,7 @@ import { AccountTypeModule } from './modules/account-type/account-type.module';
 import { AccountModule } from './modules/account/account.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoryModule } from './modules/category/category.module';
+import { IconModule } from './modules/icon/icon.module';
 import { InitModule } from './modules/init/init.module';
 import { KeysModule } from './modules/keys/keys.module';
 import { TransactionModule } from './modules/transaction/transaction.module';
@@ -54,6 +55,7 @@ import { UserModule } from './modules/user/user.module';
 		CategoryModule,
 		AccountModule,
 		TransactionModule,
+		IconModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

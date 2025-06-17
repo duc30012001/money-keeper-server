@@ -19,14 +19,12 @@ export class CreateCategoryDto {
 	name: string;
 
 	@ApiProperty({
-		description: 'Icon of the category',
-		example: 'food',
-		required: false,
-		nullable: true,
+		description: 'Icon ID',
+		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
-	@IsOptional()
+	@IsNotEmpty()
 	@IsString()
-	icon?: string;
+	iconId: string;
 
 	@ApiProperty({
 		description: 'Action type of the category',

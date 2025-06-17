@@ -11,6 +11,7 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { IconService } from 'src/modules/icon/icon.service';
 import { buildTree, TreeNode } from 'src/utils/build-tree';
 import { Category } from '../category.entity';
 import { CreateCategoryDto } from '../dtos/create-category.dto';
@@ -23,6 +24,7 @@ export class CategoryService {
 	constructor(
 		@InjectRepository(Category)
 		private readonly categoryTreeRepo: TreeRepository<Category>,
+		private readonly iconService: IconService,
 	) {}
 
 	async findAll(
@@ -139,12 +141,14 @@ export class CategoryService {
 			parent = foundParent;
 		}
 
+		const icon = await this.iconService.findOne(dto.iconId);
+
 		const category = this.categoryTreeRepo.create({
 			name: dto.name,
-			icon: dto.icon,
 			type: dto.type,
 			description: dto.description,
 			sortOrder: dto.sortOrder,
+			icon,
 		});
 
 		if (parent) {
@@ -221,8 +225,13 @@ export class CategoryService {
 			}
 		}
 
+		// icon change
+		if (dto.iconId && dto.iconId !== category.icon.id) {
+			const icon = await this.iconService.findOne(dto.iconId);
+			category.icon = icon;
+		}
+
 		// Cập nhật các thuộc tính khác
-		if (dto.icon !== undefined) category.icon = dto.icon;
 		if (dto.description !== undefined)
 			category.description = dto.description;
 		if (dto.sortOrder !== undefined) category.sortOrder = dto.sortOrder;

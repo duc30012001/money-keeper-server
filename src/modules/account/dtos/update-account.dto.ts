@@ -46,4 +46,12 @@ export class UpdateAccountDto extends PartialType(CreateAccountDto) {
 	@IsOptional()
 	@IsString()
 	accountTypeId?: string;
+
+	@ApiProperty({
+		description: 'Icon ID',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@IsOptional()
+	@IsString()
+	iconId?: string;
 }
