@@ -35,7 +35,7 @@ export class CategoryService {
 
 		// 2. Lấy toàn bộ categories flat kèm relation parent
 		const allCats = await this.categoryTreeRepo.find({
-			relations: ['parent'],
+			relations: ['parent', 'icon'],
 			order: {
 				type: 'ASC',
 				sortOrder: 'ASC',
@@ -99,13 +99,13 @@ export class CategoryService {
 	async findOne(id: string): Promise<Category> {
 		const node = await this.categoryTreeRepo.findOne({
 			where: { id },
-			relations: ['parent'],
+			relations: ['parent', 'icon'],
 		});
 		if (!node) {
 			throw new NotFoundException(`Category with ID ${id} not found`);
 		}
 		const tree = await this.categoryTreeRepo.findDescendantsTree(node, {
-			relations: ['parent'],
+			relations: ['parent', 'icon'],
 		});
 		return tree;
 	}
@@ -226,7 +226,7 @@ export class CategoryService {
 		}
 
 		// icon change
-		if (dto.iconId && dto.iconId !== category.icon.id) {
+		if (dto.iconId && dto.iconId !== category.icon?.id) {
 			const icon = await this.iconService.findOne(dto.iconId);
 			category.icon = icon;
 		}

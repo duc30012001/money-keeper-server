@@ -65,12 +65,36 @@ export class TransactionService {
 			])
 			.leftJoin('tx.account', 'account')
 			.addSelect(['account.id', 'account.name'])
+			.leftJoin('account.icon', 'accountIcon')
+			.addSelect([
+				'accountIcon.id',
+				'accountIcon.name',
+				'accountIcon.url',
+			])
 			.leftJoin('tx.category', 'category')
 			.addSelect(['category.id', 'category.name'])
+			.leftJoin('category.icon', 'categoryIcon')
+			.addSelect([
+				'categoryIcon.id',
+				'categoryIcon.name',
+				'categoryIcon.url',
+			])
 			.leftJoin('tx.senderAccount', 'senderAccount')
 			.addSelect(['senderAccount.id', 'senderAccount.name'])
+			.leftJoin('senderAccount.icon', 'senderAccountIcon')
+			.addSelect([
+				'senderAccountIcon.id',
+				'senderAccountIcon.name',
+				'senderAccountIcon.url',
+			])
 			.leftJoin('tx.receiverAccount', 'receiverAccount')
-			.addSelect(['receiverAccount.id', 'receiverAccount.name']);
+			.addSelect(['receiverAccount.id', 'receiverAccount.name'])
+			.leftJoin('receiverAccount.icon', 'receiverAccountIcon')
+			.addSelect([
+				'receiverAccountIcon.id',
+				'receiverAccountIcon.name',
+				'receiverAccountIcon.url',
+			]);
 
 		if (keyword) {
 			qb.andWhere('tx.description ILIKE :kw', { kw: `%${keyword}%` });

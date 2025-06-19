@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { IconType } from '../enums/icon-type.enum';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateIconDto {
 	@ApiProperty({
@@ -23,6 +22,6 @@ export class CreateIconDto {
 		description: 'Type of the icon',
 		example: 'income',
 	})
-	@IsEnum(IconType)
-	type: IconType;
+	@IsString()
+	type: string;
 }

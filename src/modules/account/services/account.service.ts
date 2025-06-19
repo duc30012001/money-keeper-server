@@ -37,11 +37,15 @@ export class AccountService {
 			.createQueryBuilder('account')
 			// join the AccountType relation...
 			.leftJoin('account.accountType', 'accountType')
+			.leftJoin('account.icon', 'icon')
 			// ...but only select the three columns you care about
 			.addSelect([
 				'accountType.id',
 				'accountType.name',
 				'accountType.sortOrder',
+				'icon.id',
+				'icon.name',
+				'icon.url',
 			]);
 
 		// apply your filters
@@ -74,7 +78,7 @@ export class AccountService {
 	async findOne(id: string): Promise<Account> {
 		const account = await this.accountRepository.findOne({
 			where: { id },
-			relations: ['accountType'],
+			relations: ['accountType', 'icon'],
 		});
 		if (!account) {
 			throw new NotFoundException(`Account with ID ${id} not found`);
@@ -149,7 +153,7 @@ export class AccountService {
 		// 3) icon change
 		if (
 			updateAccountDto.iconId &&
-			updateAccountDto.iconId !== account.icon.id
+			updateAccountDto.iconId !== account.icon?.id
 		) {
 			const icon = await this.iconService.findOne(
 				updateAccountDto.iconId,

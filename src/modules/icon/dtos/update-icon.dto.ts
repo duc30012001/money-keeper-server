@@ -1,6 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { IconType } from '../enums/icon-type.enum';
+import { IsOptional, IsString } from 'class-validator';
 import { CreateIconDto } from './create-icon.dto';
 
 export class UpdateIconDto extends PartialType(CreateIconDto) {
@@ -28,6 +27,6 @@ export class UpdateIconDto extends PartialType(CreateIconDto) {
 		required: false,
 	})
 	@IsOptional()
-	@IsEnum(IconType)
-	type?: IconType;
+	@IsString()
+	type?: string;
 }

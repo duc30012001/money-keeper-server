@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -28,6 +33,7 @@ export class CategoryAnalyticService {
 			.createQueryBuilder('category')
 			.leftJoinAndSelect('category.parent', 'parent')
 			.leftJoinAndSelect('category.children', 'children')
+			.leftJoinAndSelect('category.icon', 'icon')
 			.leftJoinAndSelect(
 				'category.transaction',
 				'transaction',
