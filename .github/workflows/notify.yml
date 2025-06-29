@@ -1,0 +1,24 @@
+name: Notify on Workflow Completion
+
+on:
+    workflow_run:
+        workflows: ['*']
+        types:
+            - completed
+
+jobs:
+    notify:
+        runs-on: ubuntu-latest
+        if: always()
+        steps:
+            - name: Send notification
+              uses: appleboy/telegram-action@master
+              with:
+                  to: ${{ secrets.TELEGRAM_CHAT_ID }}
+                  token: ${{ secrets.TELEGRAM_TOKEN }}
+                  message: |
+                      📌 Repository: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
+                      🚀 Workflow: *${{ github.event.workflow_run.name }}* (#${{ github.event.workflow_run.run_number }})
+                      🔔 Status: ${{ github.event.workflow_run.conclusion == 'success' && '✅ Success' || github.event.workflow_run.conclusion == 'failure' && '❌ Failure' || github.event.workflow_run.conclusion == 'cancelled' && '⚠️ Cancelled' || '❓ Unknown' }}
+                      🔗 [View Run](${{ github.event.workflow_run.html_url }})
+                  format: markdown

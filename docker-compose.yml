@@ -1,12 +1,12 @@
-version: '3.8'
 services:
-    api:
-        image: money-keeper-server:latest
+    app-prod:
+        image: money-keeper-server/prod:${TAG:-latest}
         build: .
-        # pull the port number from $APP_PORT for both host and container
         ports:
             - '${APP_PORT}:${APP_PORT}'
         env_file:
             - .env
-        command: yarn start:prod
         restart: unless-stopped
+        deploy:
+            mem_limit: 2g # Set max memory to 2 GB
+            cpus: 2 # Set max CPU to 2 CPU core

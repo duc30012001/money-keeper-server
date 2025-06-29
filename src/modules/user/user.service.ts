@@ -50,12 +50,14 @@ export class UserService {
 			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 		}
 
-		// 2. Duplicate‑email check (if you still need it)
-		const conflict = await this.userRepo.findOne({
-			where: { email: dto.email, id: Not(id) },
-		});
-		if (conflict) {
-			throw new ConflictException(AuthMessages.EMAIL_IN_USE);
+		if (dto.email) {
+			// 2. Duplicate‑email check (if you still need it)
+			const conflict = await this.userRepo.findOne({
+				where: { email: dto.email, id: Not(id) },
+			});
+			if (conflict) {
+				throw new ConflictException(AuthMessages.EMAIL_IN_USE);
+			}
 		}
 
 		// 3. Hash new password
