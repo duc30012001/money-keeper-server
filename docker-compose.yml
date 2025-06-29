@@ -7,6 +7,5 @@ services:
         env_file:
             - .env
         restart: unless-stopped
-        deploy:
-            mem_limit: 2g # Set max memory to 2 GB
-            cpus: 2 # Set max CPU to 2 CPU core
+        mem_limit: 2g # Set max memory to 2 GB
+        cpus: 2 # Set max CPU to 2 CPU core
