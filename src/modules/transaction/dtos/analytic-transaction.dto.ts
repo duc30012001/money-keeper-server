@@ -1,10 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum } from 'class-validator';
 import {
 	CsvDateRange,
 	CsvUuidArray,
 } from 'src/common/decorators/csv.decorators';
+import { AnalyticChartGroupBy } from '../transaction.enum';
 
 export class AnalyticTransactionDto {
 	@ApiProperty({
@@ -28,4 +30,11 @@ export class AnalyticTransactionDto {
 	})
 	@CsvUuidArray()
 	categoryIds?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Type of chart to display (day, month, year)',
+		example: AnalyticChartGroupBy.MONTH,
+	})
+	@IsEnum(AnalyticChartGroupBy)
+	chartGroupBy?: AnalyticChartGroupBy;
 }

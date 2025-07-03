@@ -65,7 +65,7 @@ export class TransactionController {
 		@Query() analyticTransactionDto: AnalyticTransactionDto,
 	): Promise<ResponseDto<ChartResult[]>> {
 		const data =
-			await this.transactionAnalyticService.getMonthlyIncomeExpense(
+			await this.transactionAnalyticService.getChartIncomeExpense(
 				analyticTransactionDto,
 			);
 		return new ResponseDto(data);

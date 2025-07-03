@@ -10,7 +10,7 @@ import {
 	IncomeByParentCategoryResult,
 } from '../interfaces/transaction.interface';
 import { Transaction } from '../transaction.entity';
-import { TransactionType } from '../transaction.enum';
+import { AnalyticChartGroupBy, TransactionType } from '../transaction.enum';
 
 @Injectable()
 export class TransactionAnalyticService {
@@ -111,11 +111,15 @@ export class TransactionAnalyticService {
 		};
 	}
 
-	async getMonthlyIncomeExpense(
+	async getChartIncomeExpense(
 		analyticTransactionDto: AnalyticTransactionDto,
 	): Promise<ChartResult[]> {
-		const { transactionDate, accountIds, categoryIds } =
-			analyticTransactionDto;
+		const {
+			transactionDate,
+			accountIds,
+			categoryIds,
+			chartGroupBy = AnalyticChartGroupBy.MONTH,
+		} = analyticTransactionDto;
 		// 1) date range
 		const [from, to] = getDateRange(transactionDate);
 
@@ -123,13 +127,25 @@ export class TransactionAnalyticService {
 		const queryBuilder = this.transactionRepo
 			.createQueryBuilder('t')
 			.leftJoin('t.account', 'account')
-			.leftJoin('t.category', 'category')
-			// format month label: e.g. "May 2025"
-			.select(
-				`to_char(date_trunc('month', t.transactionDate), 'Mon YYYY')`,
-				'label',
-			)
-			// sum income only
+			.leftJoin('t.category', 'category');
+
+		// format date label based on chartGroupBy
+		const dateFormats: Record<AnalyticChartGroupBy, string> = {
+			[AnalyticChartGroupBy.DAY]: 'DD Mon YYYY',
+			[AnalyticChartGroupBy.MONTH]: 'Mon YYYY',
+			[AnalyticChartGroupBy.YEAR]: 'YYYY',
+		};
+
+		const format =
+			dateFormats[chartGroupBy] ||
+			dateFormats[AnalyticChartGroupBy.MONTH];
+		queryBuilder.select(
+			`to_char(date_trunc('${chartGroupBy}', t.transactionDate), '${format}')`,
+			'label',
+		);
+
+		// sum income only
+		queryBuilder
 			.addSelect(
 				`SUM(CASE WHEN t.type = :inc THEN t.amount ELSE 0 END)`,
 				'income',
@@ -166,10 +182,10 @@ export class TransactionAnalyticService {
 			);
 		}
 
-		// 4) group & order by month
+		// 4) group & order by the same date truncation
 		const rows = await queryBuilder
-			.groupBy(`date_trunc('month', t.transactionDate)`)
-			.orderBy(`date_trunc('month', t.transactionDate)`, 'ASC')
+			.groupBy(`date_trunc('${chartGroupBy}', t.transactionDate)`)
+			.orderBy(`date_trunc('${chartGroupBy}', t.transactionDate)`, 'ASC')
 			.setParameters({
 				inc: TransactionType.INCOME,
 				exp: TransactionType.EXPENSE,
