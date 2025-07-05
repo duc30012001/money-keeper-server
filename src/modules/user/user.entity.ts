@@ -1,6 +1,7 @@
 import { Exclude } from 'class-transformer';
 import { BaseEntity } from 'src/common/entities/base.entity';
 import { Column, Entity } from 'typeorm';
+import { UserRole } from './user.enum';
 
 @Entity({ name: 'users' })
 export class User extends BaseEntity {
@@ -15,10 +16,9 @@ export class User extends BaseEntity {
 	isActive: boolean;
 
 	@Column({
-		type: 'varchar',
-		length: 50,
-		array: true,
-		default: () => "ARRAY['user']",
+		type: 'enum',
+		enum: UserRole,
+		default: UserRole.USER,
 	})
-	roles: string[];
+	role: UserRole;
 }

@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ListUserDto } from '../user/dtos/get-user.dto';
+import { UserRole } from '../user/user.enum';
 import { UserService } from '../user/user.service';
 
 @Injectable()
@@ -38,7 +39,7 @@ export class InitService implements OnModuleInit {
 					await this.userService.create({
 						email: defaultEmail,
 						password: defaultPassword,
-						roles: ['admin'],
+						role: UserRole.ADMIN,
 						isActive: true,
 					});
 
