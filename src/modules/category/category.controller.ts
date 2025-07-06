@@ -8,11 +8,13 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
 	UseInterceptors,
 } from '@nestjs/common';
 import { ClassSerializerInterceptor } from '@nestjs/common/serializer';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { Request } from 'express';
 import {
 	PaginatedResponseDto,
 	ResponseDto,
@@ -40,8 +42,9 @@ export class CategoryController {
 	@ApiOperation({ summary: 'Get all categories' })
 	async findAll(
 		@Query() query: FindCategoriesDto,
+		@Req() req: Request,
 	): Promise<PaginatedResponseDto<Category>> {
-		return this.categoryService.findAll(query);
+		return this.categoryService.findAll(query, req.user?.sub as string);
 	}
 
 	@Get('analytic/:type')
@@ -53,8 +56,13 @@ export class CategoryController {
 	async getAnalytic(
 		@Param('type') type: CategoryType,
 		@Query() query: AnalyticCategoryDto,
+		@Req() req: Request,
 	) {
-		return this.categoryAnalyticService.getAnalytic(type, query);
+		return this.categoryAnalyticService.getAnalytic(
+			type,
+			query,
+			req.user?.sub as string,
+		);
 	}
 
 	@Get(':id')
@@ -66,8 +74,12 @@ export class CategoryController {
 	})
 	async findOne(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: Request,
 	): Promise<ResponseDto<Category>> {
-		const data = await this.categoryService.findOne(id);
+		const data = await this.categoryService.findOne(
+			id,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -75,8 +87,12 @@ export class CategoryController {
 	@ApiOperation({ summary: 'Create a new category' })
 	async create(
 		@Body() createCategoryDto: CreateCategoryDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<Category>> {
-		const data = await this.categoryService.create(createCategoryDto);
+		const data = await this.categoryService.create(
+			createCategoryDto,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -84,9 +100,12 @@ export class CategoryController {
 	@ApiOperation({ summary: 'Update sort order of all categories' })
 	async updateSortOrder(
 		@Body() updateSortOrderDto: UpdateSortOrderDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<Category[]>> {
-		const data =
-			await this.categoryService.updateSortOrder(updateSortOrderDto);
+		const data = await this.categoryService.updateSortOrder(
+			updateSortOrderDto,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -100,8 +119,13 @@ export class CategoryController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateCategoryDto: UpdateCategoryDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<Category>> {
-		const data = await this.categoryService.update(id, updateCategoryDto);
+		const data = await this.categoryService.update(
+			id,
+			updateCategoryDto,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -114,7 +138,8 @@ export class CategoryController {
 	})
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: Request,
 	): Promise<void> {
-		return this.categoryService.remove(id);
+		return this.categoryService.remove(id, req.user?.sub as string);
 	}
 }

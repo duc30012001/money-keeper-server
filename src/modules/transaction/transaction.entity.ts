@@ -1,12 +1,12 @@
 import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
-import { BaseEntity } from 'src/common/entities/base.entity';
+import { BaseCreatorEntity } from 'src/common/entities/base-creator.entity';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { Account } from '../account/account.entity';
 import { Category } from '../category/category.entity';
 import { TransactionType } from './transaction.enum';
 
 @Entity('transactions')
-export class Transaction extends BaseEntity {
+export class Transaction extends BaseCreatorEntity {
 	@Column({
 		name: 'type',
 		type: 'enum',

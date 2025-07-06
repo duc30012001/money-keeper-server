@@ -8,11 +8,13 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
 	UseInterceptors,
 } from '@nestjs/common';
 import { ClassSerializerInterceptor } from '@nestjs/common/serializer';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { Request } from 'express';
 import {
 	PaginatedResponseDto,
 	ResponseDto,
@@ -44,17 +46,23 @@ export class TransactionController {
 	@ApiOperation({ summary: 'Get all transactions' })
 	async findAll(
 		@Query() findTransactionDto: FindTransactionDto,
+		@Req() req: Request,
 	): Promise<PaginatedResponseDto<Transaction>> {
-		return this.transactionService.findAll(findTransactionDto);
+		return this.transactionService.findAll(
+			findTransactionDto,
+			req.user?.sub as string,
+		);
 	}
 
 	@Get('analytics')
 	@ApiOperation({ summary: 'Get analytics for transactions' })
 	async getAnalytics(
 		@Query() analyticTransactionDto: AnalyticTransactionDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<AnalyticResult>> {
 		const data = await this.transactionAnalyticService.getAnalytics(
 			analyticTransactionDto,
+			req.user?.sub as string,
 		);
 		return new ResponseDto(data);
 	}
@@ -63,10 +71,12 @@ export class TransactionController {
 	@ApiOperation({ summary: 'Get chart data for transactions' })
 	async getChart(
 		@Query() analyticTransactionDto: AnalyticTransactionDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<ChartResult[]>> {
 		const data =
 			await this.transactionAnalyticService.getChartIncomeExpense(
 				analyticTransactionDto,
+				req.user?.sub as string,
 			);
 		return new ResponseDto(data);
 	}
@@ -75,10 +85,12 @@ export class TransactionController {
 	@ApiOperation({ summary: 'Get expense by parent categories' })
 	async getExpenseByParentCategories(
 		@Query() analyticTransactionDto: AnalyticTransactionDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<ExpenseByParentCategoryResult[]>> {
 		const data =
 			await this.transactionAnalyticService.getExpenseByParentCategories(
 				analyticTransactionDto,
+				req.user?.sub as string,
 			);
 		return new ResponseDto(data);
 	}
@@ -87,10 +99,12 @@ export class TransactionController {
 	@ApiOperation({ summary: 'Get income by parent categories' })
 	async getIncomeByParentCategories(
 		@Query() analyticTransactionDto: AnalyticTransactionDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<IncomeByParentCategoryResult[]>> {
 		const data =
 			await this.transactionAnalyticService.getIncomeByParentCategories(
 				analyticTransactionDto,
+				req.user?.sub as string,
 			);
 		return new ResponseDto(data);
 	}
@@ -104,8 +118,12 @@ export class TransactionController {
 	})
 	async findOne(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: Request,
 	): Promise<ResponseDto<Transaction>> {
-		const data = await this.transactionService.findOne(id);
+		const data = await this.transactionService.findOne(
+			id,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -113,8 +131,12 @@ export class TransactionController {
 	@ApiOperation({ summary: 'Create a new transaction' })
 	async create(
 		@Body() createTransactionDto: CreateTransactionDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<Transaction>> {
-		const data = await this.transactionService.create(createTransactionDto);
+		const data = await this.transactionService.create(
+			createTransactionDto,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -128,10 +150,12 @@ export class TransactionController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateTransactionDto: UpdateTransactionDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<Transaction>> {
 		const data = await this.transactionService.update(
 			id,
 			updateTransactionDto,
+			req.user?.sub as string,
 		);
 		return new ResponseDto(data);
 	}
@@ -145,7 +169,8 @@ export class TransactionController {
 	})
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: Request,
 	): Promise<void> {
-		return this.transactionService.remove(id);
+		return this.transactionService.remove(id, req.user?.sub as string);
 	}
 }

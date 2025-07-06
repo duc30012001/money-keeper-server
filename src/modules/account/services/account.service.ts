@@ -29,6 +29,7 @@ export class AccountService {
 
 	async findAll(
 		findAccountDto: FindAccountDto,
+		creatorId: string,
 	): Promise<PaginatedResponseDto<Account>> {
 		const { skip, pageSize, page, keyword, accountTypeIds, sort } =
 			findAccountDto;
@@ -46,7 +47,8 @@ export class AccountService {
 				'icon.id',
 				'icon.name',
 				'icon.url',
-			]);
+			])
+			.where('account.creatorId = :creatorId', { creatorId });
 
 		// apply your filters
 		if (keyword) {
@@ -75,9 +77,9 @@ export class AccountService {
 		return new PaginatedResponseDto(items, meta);
 	}
 
-	async findOne(id: string): Promise<Account> {
+	async findOne(id: string, creatorId: string): Promise<Account> {
 		const account = await this.accountRepository.findOne({
-			where: { id },
+			where: { id, creatorId },
 			relations: ['accountType', 'icon'],
 		});
 		if (!account) {
@@ -86,14 +88,17 @@ export class AccountService {
 		return account;
 	}
 
-	async findByName(name: string): Promise<Account | null> {
+	private async findByName(name: string): Promise<Account | null> {
 		return this.accountRepository.findOne({
 			where: { name },
 			relations: ['accountType'],
 		});
 	}
 
-	async create(createAccountDto: CreateAccountDto): Promise<Account> {
+	async create(
+		createAccountDto: CreateAccountDto,
+		creatorId: string,
+	): Promise<Account> {
 		const existingAccount = await this.findByName(createAccountDto.name);
 		if (existingAccount) {
 			throw new ConflictException(
@@ -103,6 +108,7 @@ export class AccountService {
 
 		const accountType = await this.accountTypeService.findOne(
 			createAccountDto.accountTypeId,
+			creatorId,
 		);
 
 		const icon = await this.iconService.findOne(createAccountDto.iconId);
@@ -113,6 +119,7 @@ export class AccountService {
 			balance: createAccountDto.initialBalance?.toString() ?? '0',
 			accountType,
 			icon,
+			creatorId,
 		});
 
 		return this.accountRepository.save(account);
@@ -121,10 +128,11 @@ export class AccountService {
 	async update(
 		id: string,
 		updateAccountDto: UpdateAccountDto,
+		creatorId: string,
 	): Promise<Account> {
 		// load existing account (including its accountType relation)
 		const account = await this.accountRepository.findOne({
-			where: { id },
+			where: { id, creatorId },
 			relations: ['accountType'],
 		});
 		if (!account) throw new NotFoundException(`Account ${id} not found`);
@@ -146,6 +154,7 @@ export class AccountService {
 		) {
 			const acctType = await this.accountTypeService.findOne(
 				updateAccountDto.accountTypeId,
+				creatorId,
 			);
 			account.accountType = acctType;
 		}
@@ -180,20 +189,21 @@ export class AccountService {
 		await this.accountRepository.save(account);
 
 		// return fresh entity
-		return this.findOne(id);
+		return this.findOne(id, creatorId);
 	}
 
-	async remove(id: string): Promise<void> {
-		await this.findOne(id);
+	async remove(id: string, creatorId: string): Promise<void> {
+		await this.findOne(id, creatorId);
 		await this.accountRepository.delete(id);
 	}
 
 	async updateSortOrder(
 		updateSortOrderDto: UpdateSortOrderDto,
+		creatorId: string,
 	): Promise<Account[]> {
 		// Verify all IDs exist in a single query
 		const existingAccounts = await this.accountRepository.find({
-			where: { id: In(updateSortOrderDto.ids) },
+			where: { id: In(updateSortOrderDto.ids), creatorId },
 		});
 
 		if (existingAccounts.length !== updateSortOrderDto.ids.length) {

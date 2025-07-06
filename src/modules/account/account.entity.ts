@@ -1,11 +1,11 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-import { BaseEntity } from 'src/common/entities/base.entity';
+import { BaseCreatorEntity } from 'src/common/entities/base-creator.entity';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { AccountType } from '../account-type/account-type.entity';
 import { Icon } from '../icon/icon.entity';
 
 @Entity('accounts')
-export class Account extends BaseEntity {
+export class Account extends BaseCreatorEntity {
 	@Column({ name: 'name', unique: true })
 	@IsNotEmpty()
 	@IsString()

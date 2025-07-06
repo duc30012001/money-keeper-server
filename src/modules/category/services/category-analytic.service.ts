@@ -23,7 +23,11 @@ export class CategoryAnalyticService {
 		private readonly categoryTreeRepo: TreeRepository<Category>,
 	) {}
 
-	async getAnalytic(type: CategoryType, params: AnalyticCategoryDto) {
+	async getAnalytic(
+		type: CategoryType,
+		params: AnalyticCategoryDto,
+		creatorId: string,
+	) {
 		const { transactionDate } = params;
 		const [from, to] = getDateRange(transactionDate);
 
@@ -41,6 +45,7 @@ export class CategoryAnalyticService {
 				{ from, to },
 			)
 			.where('category.type = :type', { type })
+			.andWhere('category.creatorId = :creatorId', { creatorId })
 			.orderBy('category.name', 'ASC')
 			.getMany();
 

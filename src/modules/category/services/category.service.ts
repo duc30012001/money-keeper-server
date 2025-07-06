@@ -28,10 +28,11 @@ export class CategoryService {
 	) {}
 
 	async findAll(
-		query?: FindCategoriesDto,
+		query: FindCategoriesDto,
+		creatorId: string,
 	): Promise<PaginatedResponseDto<TreeNode<Category, 'children'>>> {
 		// 1. Xây điều kiện filter từ DTO
-		const { keyword, type } = query ?? {};
+		const { keyword, type } = query;
 
 		// 2. Lấy toàn bộ categories flat kèm relation parent
 		const allCats = await this.categoryTreeRepo.find({
@@ -41,6 +42,7 @@ export class CategoryService {
 				sortOrder: 'ASC',
 				name: 'ASC',
 			},
+			where: { creatorId },
 		});
 
 		// 3. Tách ra những node THOẢ điều kiện filter
@@ -96,9 +98,9 @@ export class CategoryService {
 	}
 
 	/** Lấy một node cùng toàn bộ descendants */
-	async findOne(id: string): Promise<Category> {
+	async findOne(id: string, creatorId: string): Promise<Category> {
 		const node = await this.categoryTreeRepo.findOne({
-			where: { id },
+			where: { id, creatorId },
 			relations: ['parent', 'icon'],
 		});
 		if (!node) {
@@ -111,10 +113,10 @@ export class CategoryService {
 	}
 
 	/** Tạo mới, gán parent nếu có và tự động lưu closure-table */
-	async create(dto: CreateCategoryDto): Promise<Category> {
+	async create(dto: CreateCategoryDto, creatorId: string): Promise<Category> {
 		// Check duplicate name
 		const dup = await this.categoryTreeRepo.findOne({
-			where: { name: dto.name },
+			where: { name: dto.name, creatorId },
 		});
 		if (dup) {
 			throw new ConflictException(
@@ -126,7 +128,7 @@ export class CategoryService {
 		let parent: Category | undefined;
 		if (dto.parentId) {
 			const foundParent = await this.categoryTreeRepo.findOne({
-				where: { id: dto.parentId },
+				where: { id: dto.parentId, creatorId },
 			});
 			if (!foundParent) {
 				throw new NotFoundException(
@@ -149,6 +151,7 @@ export class CategoryService {
 			description: dto.description,
 			sortOrder: dto.sortOrder,
 			icon,
+			creatorId,
 		});
 
 		if (parent) {
@@ -156,12 +159,18 @@ export class CategoryService {
 		}
 
 		const saved = await this.categoryTreeRepo.save(category);
-		return this.findOne(saved.id);
+		return this.findOne(saved.id, creatorId);
 	}
 
 	/** Cập nhật thông tin và parent */
-	async update(id: string, dto: UpdateCategoryDto): Promise<Category> {
-		const category = await this.categoryTreeRepo.findOne({ where: { id } });
+	async update(
+		id: string,
+		dto: UpdateCategoryDto,
+		creatorId: string,
+	): Promise<Category> {
+		const category = await this.categoryTreeRepo.findOne({
+			where: { id, creatorId },
+		});
 		if (!category) {
 			throw new NotFoundException(`Category with ID ${id} not found`);
 		}
@@ -169,7 +178,7 @@ export class CategoryService {
 		// Đổi tên nếu cần và check duplicate
 		if (dto.name && dto.name !== category.name) {
 			const dup = await this.categoryTreeRepo.findOne({
-				where: { name: dto.name },
+				where: { name: dto.name, creatorId },
 			});
 			if (dup) {
 				throw new ConflictException(
@@ -208,7 +217,7 @@ export class CategoryService {
 				category.parent = null;
 			} else {
 				const parent = await this.categoryTreeRepo.findOne({
-					where: { id: dto.parentId },
+					where: { id: dto.parentId, creatorId },
 				});
 				if (!parent) {
 					throw new NotFoundException(
@@ -237,12 +246,14 @@ export class CategoryService {
 		if (dto.sortOrder !== undefined) category.sortOrder = dto.sortOrder;
 
 		await this.categoryTreeRepo.save(category);
-		return this.findOne(id);
+		return this.findOne(id, creatorId);
 	}
 
 	/** Xóa node (cascade với cây) */
-	async remove(id: string): Promise<void> {
-		const category = await this.categoryTreeRepo.findOne({ where: { id } });
+	async remove(id: string, creatorId: string): Promise<void> {
+		const category = await this.categoryTreeRepo.findOne({
+			where: { id, creatorId },
+		});
 		if (!category) {
 			throw new NotFoundException(`Category with ID ${id} not found`);
 		}
@@ -250,7 +261,10 @@ export class CategoryService {
 	}
 
 	/** Cập nhật sortOrder dùng QueryBuilder hoặc map rồi save lại */
-	async updateSortOrder(dto: UpdateSortOrderDto): Promise<Category[]> {
+	async updateSortOrder(
+		dto: UpdateSortOrderDto,
+		creatorId: string,
+	): Promise<Category[]> {
 		// Tương tự như trước, hoặc bạn có thể
 		// load toàn bộ tree rồi set .sortOrder rồi save từng phần
 		await this.categoryTreeRepo
@@ -262,7 +276,10 @@ export class CategoryService {
 						.map((id, i) => `WHEN '${id}' THEN ${i + 1}`)
 						.join(' ')} END`,
 			})
-			.where('id IN (:...ids)', { ids: dto.ids })
+			.where('id IN (:...ids) AND creatorId = :creatorId', {
+				ids: dto.ids,
+				creatorId,
+			})
 			.execute();
 
 		// Trả về cây đã sắp xếp lại

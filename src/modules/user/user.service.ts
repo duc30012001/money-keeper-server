@@ -74,7 +74,9 @@ export class UserService {
 	 * Omits password (select: false) automatically.
 	 */
 	async getOneById(id: string): Promise<User> {
-		const user = await this.userRepo.findOne({ where: { id } });
+		const user = await this.userRepo.findOne({
+			where: { id },
+		});
 		if (!user) {
 			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 		}
@@ -86,7 +88,18 @@ export class UserService {
 	 * Omits password (select: false) automatically.
 	 */
 	async getOneByEmail(email: string): Promise<User> {
-		const user = await this.userRepo.findOne({ where: { email } });
+		const user = await this.userRepo.findOne({
+			where: { email },
+			select: {
+				id: true,
+				password: true,
+				email: true,
+				isActive: true,
+				role: true,
+				createdAt: false,
+				updatedAt: false,
+			},
+		});
 		if (!user) {
 			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
 		}

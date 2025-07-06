@@ -21,10 +21,11 @@ export class AccountBalanceService {
 		amount: number,
 		type: CategoryType,
 		manager: EntityManager,
+		creatorId: string,
 	): Promise<Account> {
 		const repo = manager.getRepository(Account);
 
-		const account = await repo.findOne({ where: { id } });
+		const account = await repo.findOne({ where: { id, creatorId } });
 		if (!account) {
 			throw new NotFoundException(`Account with ID ${id} not found`);
 		}
@@ -38,9 +39,10 @@ export class AccountBalanceService {
 		return repo.save(account);
 	}
 
-	async getTotalBalance(): Promise<number> {
+	async getTotalBalance(creatorId: string): Promise<number> {
 		const accounts = await this.accountRepository.find({
 			select: ['balance'],
+			where: { creatorId },
 		});
 		return accounts.reduce(
 			(acc, account) => acc + Number(account.balance),

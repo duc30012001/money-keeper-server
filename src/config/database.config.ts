@@ -26,7 +26,7 @@ export class DatabaseConfigService implements TypeOrmOptionsFactory {
 			// Tắt synchronize, dùng migration
 			// synchronize: true,
 			synchronize: false,
-			migrations: ['src/migration/*{.ts,.js}'],
+			migrations: ['src/migrations/*{.ts,.js}'],
 		};
 	}
 }

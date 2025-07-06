@@ -21,6 +21,7 @@ export class TransactionAnalyticService {
 
 	async getAnalytics(
 		analyticTransactionDto: AnalyticTransactionDto,
+		creatorId: string,
 	): Promise<AnalyticResult> {
 		const { transactionDate, accountIds, categoryIds } =
 			analyticTransactionDto;
@@ -40,6 +41,7 @@ export class TransactionAnalyticService {
 				.leftJoin('t.category', 'category')
 				.select('SUM(t.amount)', 'sum')
 				.where('t.type = :type', { type })
+				.andWhere('t.creatorId = :creatorId', { creatorId })
 				.andWhere('t.transactionDate BETWEEN :from AND :to', {
 					from,
 					to,
@@ -113,6 +115,7 @@ export class TransactionAnalyticService {
 
 	async getChartIncomeExpense(
 		analyticTransactionDto: AnalyticTransactionDto,
+		creatorId: string,
 	): Promise<ChartResult[]> {
 		const {
 			transactionDate,
@@ -156,6 +159,7 @@ export class TransactionAnalyticService {
 				'expense',
 			)
 			.where('t.transactionDate BETWEEN :from AND :to', { from, to })
+			.andWhere('t.creatorId = :creatorId', { creatorId })
 			// only standard income/expense
 			.andWhere('t.type IN (:inc, :exp)', {
 				inc: TransactionType.INCOME,
@@ -206,6 +210,7 @@ export class TransactionAnalyticService {
 
 	async getExpenseByParentCategories(
 		analyticTransactionDto: AnalyticTransactionDto,
+		creatorId: string,
 	): Promise<ExpenseByParentCategoryResult[]> {
 		const { transactionDate, accountIds, categoryIds } =
 			analyticTransactionDto;
@@ -221,6 +226,7 @@ export class TransactionAnalyticService {
 			.leftJoin('t.category', 'category')
 			.leftJoin('category.parent', 'parent')
 			.where('t.type = :type', { type: TransactionType.EXPENSE })
+			.andWhere('t.creatorId = :creatorId', { creatorId })
 			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
 
 		// 3) Optional DTO filters
@@ -272,6 +278,7 @@ export class TransactionAnalyticService {
 
 	async getIncomeByParentCategories(
 		analyticTransactionDto: AnalyticTransactionDto,
+		creatorId: string,
 	): Promise<IncomeByParentCategoryResult[]> {
 		const { transactionDate, accountIds, categoryIds } =
 			analyticTransactionDto;
@@ -287,6 +294,7 @@ export class TransactionAnalyticService {
 			.leftJoin('t.category', 'category')
 			.leftJoin('category.parent', 'parent')
 			.where('t.type = :type', { type: TransactionType.INCOME })
+			.andWhere('t.creatorId = :creatorId', { creatorId })
 			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
 
 		// 3) Optional DTO filters

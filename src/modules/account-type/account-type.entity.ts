@@ -1,13 +1,13 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { Column, Entity, OneToMany, RelationCount, Unique } from 'typeorm';
 
-import { BaseEntity } from 'src/common/entities/base.entity';
+import { BaseCreatorEntity } from 'src/common/entities/base-creator.entity';
 import { Account } from '../account/account.entity';
 
 @Entity('account_types')
 @Unique(['name'])
-export class AccountType extends BaseEntity {
-	@Column({ name: 'name', unique: true })
+export class AccountType extends BaseCreatorEntity {
+	@Column({ name: 'name' })
 	@IsNotEmpty()
 	@IsString()
 	name: string;

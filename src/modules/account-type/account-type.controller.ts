@@ -7,11 +7,13 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Req,
 	UseInterceptors,
 } from '@nestjs/common';
 import { ClassSerializerInterceptor } from '@nestjs/common/serializer';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { Request } from 'express';
 import {
 	PaginatedResponseDto,
 	ResponseDto,
@@ -30,8 +32,10 @@ export class AccountTypeController {
 
 	@Get()
 	@ApiOperation({ summary: 'Get all account types' })
-	async findAll(): Promise<PaginatedResponseDto<AccountType>> {
-		return this.accountTypeService.findAll();
+	async findAll(
+		@Req() req: Request,
+	): Promise<PaginatedResponseDto<AccountType>> {
+		return this.accountTypeService.findAll(req.user?.sub as string);
 	}
 
 	@Get(':id')
@@ -43,8 +47,12 @@ export class AccountTypeController {
 	})
 	async findOne(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: Request,
 	): Promise<ResponseDto<AccountType>> {
-		const data = await this.accountTypeService.findOne(id);
+		const data = await this.accountTypeService.findOne(
+			id,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -52,8 +60,12 @@ export class AccountTypeController {
 	@ApiOperation({ summary: 'Create a new account type' })
 	async create(
 		@Body() createAccountTypeDto: CreateAccountTypeDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<AccountType>> {
-		const data = await this.accountTypeService.create(createAccountTypeDto);
+		const data = await this.accountTypeService.create(
+			createAccountTypeDto,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -61,9 +73,12 @@ export class AccountTypeController {
 	@ApiOperation({ summary: 'Update sort order of all account types' })
 	async updateSortOrder(
 		@Body() updateSortOrderDto: UpdateSortOrderDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<AccountType[]>> {
-		const data =
-			await this.accountTypeService.updateSortOrder(updateSortOrderDto);
+		const data = await this.accountTypeService.updateSortOrder(
+			updateSortOrderDto,
+			req.user?.sub as string,
+		);
 		return new ResponseDto(data);
 	}
 
@@ -77,10 +92,12 @@ export class AccountTypeController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateAccountTypeDto: UpdateAccountTypeDto,
+		@Req() req: Request,
 	): Promise<ResponseDto<AccountType>> {
 		const data = await this.accountTypeService.update(
 			id,
 			updateAccountTypeDto,
+			req.user?.sub as string,
 		);
 		return new ResponseDto(data);
 	}
@@ -94,7 +111,8 @@ export class AccountTypeController {
 	})
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: Request,
 	): Promise<void> {
-		return this.accountTypeService.remove(id);
+		return this.accountTypeService.remove(id, req.user?.sub as string);
 	}
 }

@@ -17,14 +17,14 @@ import {
 	TreeParent,
 } from 'typeorm';
 
-import { BaseEntity } from 'src/common/entities/base.entity';
+import { BaseCreatorEntity } from 'src/common/entities/base-creator.entity';
 import { Icon } from '../icon/icon.entity';
 import { Transaction } from '../transaction/transaction.entity';
 import { CategoryType } from './category.enum';
 
 @Entity('categories')
 @Tree('closure-table')
-export class Category extends BaseEntity {
+export class Category extends BaseCreatorEntity {
 	@Column({ name: 'name', unique: true })
 	@IsNotEmpty()
 	@IsString()

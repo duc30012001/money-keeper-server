@@ -35,6 +35,7 @@ export class TransactionService {
 	// ------------------------------------------------------------
 	async findAll(
 		dto: FindTransactionDto,
+		creatorId: string,
 	): Promise<PaginatedResponseDto<Transaction>> {
 		const {
 			page,
@@ -94,7 +95,8 @@ export class TransactionService {
 				'receiverAccountIcon.id',
 				'receiverAccountIcon.name',
 				'receiverAccountIcon.url',
-			]);
+			])
+			.where('tx.creatorId = :creatorId', { creatorId });
 
 		if (keyword) {
 			qb.andWhere('tx.description ILIKE :kw', { kw: `%${keyword}%` });
@@ -145,9 +147,9 @@ export class TransactionService {
 		return new PaginatedResponseDto(items, meta);
 	}
 
-	async findOne(id: string): Promise<Transaction> {
+	async findOne(id: string, creatorId: string): Promise<Transaction> {
 		const tx = await this.ds.getRepository(Transaction).findOne({
-			where: { id },
+			where: { id, creatorId },
 			relations: [
 				'account',
 				'category',
@@ -162,21 +164,28 @@ export class TransactionService {
 	// ------------------------------------------------------------
 	// PUBLIC — MUTATIONS
 	// ------------------------------------------------------------
-	async create(dto: CreateTransactionDto): Promise<Transaction> {
+	async create(
+		dto: CreateTransactionDto,
+		creatorId: string,
+	): Promise<Transaction> {
 		return this.ds
-			.transaction((manager) => this._create(manager, dto))
+			.transaction((manager) => this._create(manager, dto, creatorId))
 			.catch((err) => this._wrapError(err, 'create transaction'));
 	}
 
-	async update(id: string, dto: UpdateTransactionDto): Promise<Transaction> {
+	async update(
+		id: string,
+		dto: UpdateTransactionDto,
+		creatorId: string,
+	): Promise<Transaction> {
 		return this.ds
-			.transaction((manager) => this._update(manager, id, dto))
+			.transaction((manager) => this._update(manager, id, dto, creatorId))
 			.catch((err) => this._wrapError(err, 'update transaction'));
 	}
 
-	async remove(id: string): Promise<void> {
+	async remove(id: string, creatorId: string): Promise<void> {
 		await this.ds
-			.transaction((manager) => this._remove(manager, id))
+			.transaction((manager) => this._remove(manager, id, creatorId))
 			.catch((err) => this._wrapError(err, 'remove transaction'));
 	}
 
@@ -186,15 +195,17 @@ export class TransactionService {
 	private async _create(
 		manager: EntityManager,
 		dto: CreateTransactionDto,
+		creatorId: string,
 	): Promise<Transaction> {
 		return dto.type === TransactionType.TRANSFER
-			? this._createTransfer(manager, dto)
-			: this._createStandard(manager, dto);
+			? this._createTransfer(manager, dto, creatorId)
+			: this._createStandard(manager, dto, creatorId);
 	}
 
 	private async _createTransfer(
 		manager: EntityManager,
 		dto: CreateTransactionDto,
+		creatorId: string,
 	): Promise<Transaction> {
 		// adjust both balances
 		await this.accountBalanceService.updateBalance(
@@ -202,12 +213,14 @@ export class TransactionService {
 			dto.amount,
 			CategoryType.EXPENSE,
 			manager,
+			creatorId,
 		);
 		await this.accountBalanceService.updateBalance(
 			dto.receiverAccountId!,
 			dto.amount,
 			CategoryType.INCOME,
 			manager,
+			creatorId,
 		);
 
 		// create single record
@@ -218,6 +231,7 @@ export class TransactionService {
 			amount: dto.amount,
 			description: dto.description,
 			transactionDate: dto.transactionDate,
+			creatorId,
 		});
 		return manager.save(tx);
 	}
@@ -225,10 +239,11 @@ export class TransactionService {
 	private async _createStandard(
 		manager: EntityManager,
 		dto: CreateTransactionDto,
+		creatorId: string,
 	): Promise<Transaction> {
 		// load category
 		const category = await manager.findOneOrFail<Category>(Category, {
-			where: { id: dto.categoryId! },
+			where: { id: dto.categoryId!, creatorId },
 			select: ['id', 'type'],
 		});
 
@@ -247,6 +262,7 @@ export class TransactionService {
 			dto.amount,
 			category.type,
 			manager,
+			creatorId,
 		);
 
 		// create and return
@@ -257,6 +273,7 @@ export class TransactionService {
 			amount: dto.amount,
 			description: dto.description,
 			transactionDate: dto.transactionDate,
+			creatorId,
 		});
 		return manager.save(tx);
 	}
@@ -268,10 +285,11 @@ export class TransactionService {
 		manager: EntityManager,
 		id: string,
 		dto: UpdateTransactionDto,
+		creatorId: string,
 	): Promise<Transaction> {
 		const repo = manager.getRepository<Transaction>(Transaction);
 		const tx = await repo.findOne({
-			where: { id },
+			where: { id, creatorId },
 			relations: [
 				'account',
 				'category',
@@ -282,10 +300,10 @@ export class TransactionService {
 		if (!tx) throw new NotFoundException(`Transaction ${id} not found`);
 
 		// 1) undo old effects
-		await this._reverseEffects(tx, manager);
+		await this._reverseEffects(tx, manager, creatorId);
 
 		// 2) apply new
-		const patched = await this._applyNewValues(tx, dto, manager);
+		const patched = await this._applyNewValues(tx, dto, manager, creatorId);
 
 		// 3) persist
 		return repo.save(patched);
@@ -295,6 +313,7 @@ export class TransactionService {
 		tx: Transaction,
 		dto: UpdateTransactionDto,
 		manager: EntityManager,
+		creatorId: string,
 	): Promise<Transaction> {
 		// base fallbacks
 		const newType = dto.type ?? tx.type;
@@ -313,12 +332,14 @@ export class TransactionService {
 				newAmt,
 				CategoryType.EXPENSE,
 				manager,
+				creatorId,
 			);
 			await this.accountBalanceService.updateBalance(
 				receiverId,
 				newAmt,
 				CategoryType.INCOME,
 				manager,
+				creatorId,
 			);
 
 			// patch transfer fields
@@ -332,7 +353,7 @@ export class TransactionService {
 			// ➡️ converting TO standard: clear transfer fields
 			const newCategory: Category = dto.categoryId
 				? await manager.findOneOrFail<Category>(Category, {
-						where: { id: dto.categoryId },
+						where: { id: dto.categoryId, creatorId },
 						select: ['id', 'type'],
 					})
 				: tx.category!;
@@ -353,6 +374,7 @@ export class TransactionService {
 				newAmt,
 				newCategory.type,
 				manager,
+				creatorId,
 			);
 
 			// patch standard fields
@@ -367,10 +389,15 @@ export class TransactionService {
 		// common patches
 		tx.transactionDate = newDate;
 		tx.description = newDesc;
+		tx.creatorId = creatorId;
 		return tx;
 	}
 
-	private async _reverseEffects(tx: Transaction, manager: EntityManager) {
+	private async _reverseEffects(
+		tx: Transaction,
+		manager: EntityManager,
+		creatorId: string,
+	) {
 		if (tx.type === TransactionType.TRANSFER) {
 			// undo transfer
 			await this.accountBalanceService.updateBalance(
@@ -378,12 +405,14 @@ export class TransactionService {
 				Math.abs(tx.amount),
 				CategoryType.INCOME,
 				manager,
+				creatorId,
 			);
 			await this.accountBalanceService.updateBalance(
 				tx.receiverAccount!.id,
 				Math.abs(tx.amount),
 				CategoryType.EXPENSE,
 				manager,
+				creatorId,
 			);
 		} else {
 			// undo standard
@@ -397,6 +426,7 @@ export class TransactionService {
 				origAmt,
 				reverseType,
 				manager,
+				creatorId,
 			);
 		}
 	}
@@ -404,10 +434,14 @@ export class TransactionService {
 	// ------------------------------------------------------------
 	// PRIVATE — REMOVE
 	// ------------------------------------------------------------
-	private async _remove(manager: EntityManager, id: string): Promise<void> {
+	private async _remove(
+		manager: EntityManager,
+		id: string,
+		creatorId: string,
+	): Promise<void> {
 		const repo = manager.getRepository<Transaction>(Transaction);
 		const tx = await repo.findOne({
-			where: { id },
+			where: { id, creatorId },
 			relations: [
 				'account',
 				'category',
@@ -418,7 +452,7 @@ export class TransactionService {
 		if (!tx) throw new NotFoundException(`Transaction ${id} not found`);
 
 		// undo
-		await this._reverseEffects(tx, manager);
+		await this._reverseEffects(tx, manager, creatorId);
 
 		// delete
 		await manager.remove(tx);
