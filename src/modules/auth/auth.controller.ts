@@ -6,6 +6,7 @@ import { ResponseDto } from 'src/common/dtos/response.dto';
 import { User } from '../user/user.entity';
 import { AuthService } from './auth.service';
 import { RefreshDto } from './dtos/refresh-token.dto';
+import { RegisterDto } from './dtos/register.dto';
 import { GetTokenResponse, SigninDto } from './dtos/signin.dto';
 
 @ApiTags('Auth')
@@ -27,6 +28,14 @@ export class AuthController {
 		@Body() dto: SigninDto,
 	): Promise<ResponseDto<GetTokenResponse>> {
 		const data = await this.auth.signin(dto);
+		return new ResponseDto(data);
+	}
+
+	@Public()
+	@Post('register')
+	@ApiOperation({ summary: 'Sign in with email and password' })
+	async register(@Body() dto: RegisterDto): Promise<ResponseDto<User>> {
+		const data = await this.auth.register(dto);
 		return new ResponseDto(data);
 	}
 

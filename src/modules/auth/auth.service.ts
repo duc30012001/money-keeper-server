@@ -7,6 +7,7 @@ import { JwtPayload } from 'src/common/types/jwt-payload.interface';
 import { JwtService } from '../jwt/jwt.service';
 import { UserService } from '../user/user.service';
 import { RefreshDto } from './dtos/refresh-token.dto';
+import { RegisterDto } from './dtos/register.dto';
 import { GetTokenResponse, SigninDto } from './dtos/signin.dto';
 
 @Injectable()
@@ -37,6 +38,10 @@ export class AuthService {
 		const refreshToken = await this.jwt.generateRefreshToken(payload);
 
 		return new GetTokenResponse(accessToken, refreshToken);
+	}
+
+	async register(dto: RegisterDto) {
+		return this.userService.create(dto);
 	}
 
 	/** Verify the refresh token, then issue a new access (and refresh) token */
