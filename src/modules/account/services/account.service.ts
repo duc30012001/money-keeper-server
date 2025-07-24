@@ -11,6 +11,7 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { IconService } from 'src/modules/icon/icon.service';
+import { TransactionService } from 'src/modules/transaction/services/transaction.service';
 import { AccountTypeService } from '../../account-type/account-type.service';
 import { Account } from '../account.entity';
 import { CreateAccountDto } from '../dtos/create-account.dto';
@@ -25,6 +26,7 @@ export class AccountService {
 		private readonly accountRepository: Repository<Account>,
 		private readonly accountTypeService: AccountTypeService,
 		private readonly iconService: IconService,
+		private readonly transactionService: TransactionService,
 	) {}
 
 	async findAll(
@@ -36,10 +38,8 @@ export class AccountService {
 
 		const qb = this.accountRepository
 			.createQueryBuilder('account')
-			// join the AccountType relation...
 			.leftJoin('account.accountType', 'accountType')
 			.leftJoin('account.icon', 'icon')
-			// ...but only select the three columns you care about
 			.addSelect([
 				'accountType.id',
 				'accountType.name',
@@ -193,6 +193,7 @@ export class AccountService {
 	}
 
 	async remove(id: string, creatorId: string): Promise<void> {
+		await this.transactionService.removeByAccountId(id, creatorId);
 		await this.findOne(id, creatorId);
 		await this.accountRepository.delete(id);
 	}

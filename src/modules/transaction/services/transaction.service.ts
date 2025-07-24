@@ -10,6 +10,7 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { SortOrder } from 'src/common/enums/common';
 import { Account } from 'src/modules/account/account.entity';
 import { AccountBalanceService } from 'src/modules/account/services/account-balance.service';
 import { Category } from 'src/modules/category/category.entity';
@@ -18,8 +19,11 @@ import { CreateTransactionDto } from 'src/modules/transaction/dtos/create-transa
 import { FindTransactionDto } from 'src/modules/transaction/dtos/find-transaction.dto';
 import { UpdateTransactionDto } from 'src/modules/transaction/dtos/update-transaction.dto';
 import { Transaction } from 'src/modules/transaction/transaction.entity';
-import { TransactionType } from 'src/modules/transaction/transaction.enum';
-import { DataSource, EntityManager } from 'typeorm';
+import {
+	TransactionOrderBy,
+	TransactionType,
+} from 'src/modules/transaction/transaction.enum';
+import { Brackets, DataSource, EntityManager } from 'typeorm';
 
 @Injectable()
 export class TransactionService {
@@ -44,12 +48,14 @@ export class TransactionService {
 			keyword,
 			categoryIds,
 			accountIds,
-			senderAccountIds,
-			receiverAccountIds,
+			// senderAccountIds,
+			// receiverAccountIds,
 			transactionDate,
 			amount,
 			type,
-			sort,
+			// sort,
+			order = SortOrder.DESC,
+			orderBy = TransactionOrderBy.TRANSACTION_DATE,
 		} = dto;
 
 		const repo = this.ds.getRepository(Transaction);
@@ -102,21 +108,34 @@ export class TransactionService {
 			qb.andWhere('tx.description ILIKE :kw', { kw: `%${keyword}%` });
 		}
 		if (accountIds?.length) {
-			qb.andWhere('account.id IN(:...accountIds)', { accountIds });
+			qb.andWhere(
+				new Brackets((subQb) => {
+					subQb
+						.where('account.id IN(:...accountIds)', {
+							accountIds,
+						})
+						.orWhere('senderAccount.id IN(:...accountIds)', {
+							accountIds,
+						})
+						.orWhere('receiverAccount.id IN(:...accountIds)', {
+							accountIds,
+						});
+				}),
+			);
 		}
 		if (categoryIds?.length) {
 			qb.andWhere('category.id IN(:...categoryIds)', { categoryIds });
 		}
-		if (senderAccountIds?.length) {
-			qb.andWhere('senderAccount.id IN(:...senderAccountIds)', {
-				senderAccountIds,
-			});
-		}
-		if (receiverAccountIds?.length) {
-			qb.andWhere('receiverAccount.id IN(:...receiverAccountIds)', {
-				receiverAccountIds,
-			});
-		}
+		// if (senderAccountIds?.length) {
+		// 	qb.andWhere('senderAccount.id IN(:...senderAccountIds)', {
+		// 		senderAccountIds,
+		// 	});
+		// }
+		// if (receiverAccountIds?.length) {
+		// 	qb.andWhere('receiverAccount.id IN(:...receiverAccountIds)', {
+		// 		receiverAccountIds,
+		// 	});
+		// }
 		if (type?.length) {
 			qb.andWhere('tx.type IN(:...types)', { types: type });
 		}
@@ -133,13 +152,14 @@ export class TransactionService {
 			});
 		}
 
-		if (sort?.length) {
-			for (const s of sort) {
-				qb.orderBy(`tx.${s.id}`, s.desc ? 'DESC' : 'ASC');
-			}
-		} else {
-			qb.orderBy(`tx.transactionDate`, 'DESC');
-		}
+		// if (sort?.length) {
+		// 	for (const s of sort) {
+		// 		qb.orderBy(`tx.${s.id}`, s.desc ? 'DESC' : 'ASC');
+		// 	}
+		// } else {
+		// 	qb.orderBy(`tx.transactionDate`, 'DESC');
+		// }
+		qb.orderBy(`tx.${orderBy}`, order);
 		qb.skip(skip).take(pageSize);
 
 		const [items, total] = await qb.getManyAndCount();
@@ -184,8 +204,80 @@ export class TransactionService {
 	}
 
 	async remove(id: string, creatorId: string): Promise<void> {
-		await this.ds
+		return this.ds
 			.transaction((manager) => this._remove(manager, id, creatorId))
+			.catch((err) => this._wrapError(err, 'remove transaction'));
+	}
+
+	async removeByAccountId(
+		accountId: string,
+		creatorId: string,
+	): Promise<void> {
+		return this.ds
+			.transaction(async (manager) => {
+				const repo = manager.getRepository<Transaction>(Transaction);
+
+				const tx = await repo
+					.createQueryBuilder('tx')
+					.select('tx.id')
+					.leftJoin('tx.account', 'account')
+					.leftJoin('tx.senderAccount', 'senderAccount')
+					.leftJoin('tx.receiverAccount', 'receiverAccount')
+					.where('tx.creatorId = :creatorId', { creatorId })
+					.andWhere(
+						new Brackets((subQb) => {
+							subQb
+								.where('account.id = :accountId', {
+									accountId,
+								})
+								.orWhere('senderAccount.id = :accountId', {
+									accountId,
+								})
+								.orWhere('receiverAccount.id = :accountId', {
+									accountId,
+								});
+						}),
+					)
+					.getMany();
+
+				await Promise.all(
+					tx.map(({ id }) => this._remove(manager, id, creatorId)),
+				);
+			})
+			.catch((err) => this._wrapError(err, 'remove transaction'));
+	}
+
+	async removeByCategoryId(
+		categoryId: string,
+		creatorId: string,
+	): Promise<void> {
+		return this.ds
+			.transaction(async (manager) => {
+				const txRepo = manager.getRepository<Transaction>(Transaction);
+
+				const tx = await txRepo
+					.createQueryBuilder('tx')
+					.select('tx.id')
+					.leftJoin('tx.category', 'category')
+					.leftJoin('category.parent', 'parentCategory')
+					.where('tx.creatorId = :creatorId', { creatorId })
+					.andWhere(
+						new Brackets((subQb) => {
+							subQb
+								.where('category.id = :categoryId', {
+									categoryId,
+								})
+								.orWhere('parentCategory.id = :categoryId', {
+									categoryId,
+								});
+						}),
+					)
+					.getMany();
+
+				await Promise.all(
+					tx.map(({ id }) => this._remove(manager, id, creatorId)),
+				);
+			})
 			.catch((err) => this._wrapError(err, 'remove transaction'));
 	}
 

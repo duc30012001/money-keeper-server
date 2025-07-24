@@ -12,6 +12,7 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { IconService } from 'src/modules/icon/icon.service';
+import { TransactionService } from 'src/modules/transaction/services/transaction.service';
 import { buildTree, TreeNode } from 'src/utils/build-tree';
 import { Category } from '../category.entity';
 import { CreateCategoryDto } from '../dtos/create-category.dto';
@@ -25,6 +26,7 @@ export class CategoryService {
 		@InjectRepository(Category)
 		private readonly categoryTreeRepo: TreeRepository<Category>,
 		private readonly iconService: IconService,
+		private readonly transactionService: TransactionService,
 	) {}
 
 	async findAll(
@@ -257,6 +259,7 @@ export class CategoryService {
 		if (!category) {
 			throw new NotFoundException(`Category with ID ${id} not found`);
 		}
+		await this.transactionService.removeByCategoryId(id, creatorId);
 		await this.categoryTreeRepo.remove(category);
 	}
 

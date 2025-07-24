@@ -19,15 +19,18 @@ import {
 	PaginatedResponseDto,
 	ResponseDto,
 } from 'src/common/dtos/response.dto';
-import { AnalyticTransactionDto } from './dtos/analytic-transaction.dto';
+import {
+	AnalyticParentCategoryDto,
+	AnalyticTransactionByDateDto,
+	AnalyticTransactionDto,
+} from './dtos/analytic-transaction.dto';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { FindTransactionDto } from './dtos/find-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
 import {
+	AnalyticByParentCategoryResult,
 	AnalyticResult,
 	ChartResult,
-	ExpenseByParentCategoryResult,
-	IncomeByParentCategoryResult,
 } from './interfaces/transaction.interface';
 import { TransactionAnalyticService } from './services/transaction-analytic.service';
 import { TransactionService } from './services/transaction.service';
@@ -67,43 +70,29 @@ export class TransactionController {
 		return new ResponseDto(data);
 	}
 
-	@Get('chart')
+	@Get('analytics/parent-categories')
+	@ApiOperation({ summary: 'Get analytic by parent categories' })
+	async getAnalyticParentCategory(
+		@Query() queryParams: AnalyticParentCategoryDto,
+		@Req() req: Request,
+	): Promise<ResponseDto<AnalyticByParentCategoryResult[]>> {
+		const data =
+			await this.transactionAnalyticService.getAnalyticParentCategory(
+				queryParams,
+				req.user?.sub as string,
+			);
+		return new ResponseDto(data);
+	}
+
+	@Get('analytics/chart')
 	@ApiOperation({ summary: 'Get chart data for transactions' })
 	async getChart(
-		@Query() analyticTransactionDto: AnalyticTransactionDto,
+		@Query() queryParams: AnalyticTransactionByDateDto,
 		@Req() req: Request,
 	): Promise<ResponseDto<ChartResult[]>> {
 		const data =
 			await this.transactionAnalyticService.getChartIncomeExpense(
-				analyticTransactionDto,
-				req.user?.sub as string,
-			);
-		return new ResponseDto(data);
-	}
-
-	@Get('expense-by-parent-categories')
-	@ApiOperation({ summary: 'Get expense by parent categories' })
-	async getExpenseByParentCategories(
-		@Query() analyticTransactionDto: AnalyticTransactionDto,
-		@Req() req: Request,
-	): Promise<ResponseDto<ExpenseByParentCategoryResult[]>> {
-		const data =
-			await this.transactionAnalyticService.getExpenseByParentCategories(
-				analyticTransactionDto,
-				req.user?.sub as string,
-			);
-		return new ResponseDto(data);
-	}
-
-	@Get('income-by-parent-categories')
-	@ApiOperation({ summary: 'Get income by parent categories' })
-	async getIncomeByParentCategories(
-		@Query() analyticTransactionDto: AnalyticTransactionDto,
-		@Req() req: Request,
-	): Promise<ResponseDto<IncomeByParentCategoryResult[]>> {
-		const data =
-			await this.transactionAnalyticService.getIncomeByParentCategories(
-				analyticTransactionDto,
+				queryParams,
 				req.user?.sub as string,
 			);
 		return new ResponseDto(data);

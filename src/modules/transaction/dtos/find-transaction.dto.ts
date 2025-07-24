@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import {
 	CsvDateRange,
@@ -8,6 +8,7 @@ import {
 	CsvUuidArray,
 } from 'src/common/decorators/csv.decorators';
 import { BaseQueryDto } from 'src/common/dtos/base-query.dto';
+import { SortOrder } from 'src/common/enums/common';
 import { TransactionOrderBy, TransactionType } from '../transaction.enum';
 
 export class FindTransactionSortDto {
@@ -44,19 +45,19 @@ export class FindTransactionDto extends BaseQueryDto {
 	@CsvUuidArray()
 	categoryIds?: string[];
 
-	@ApiPropertyOptional({
-		description: 'Sender Account IDs (comma-separated)',
-		example: '1,2,3',
-	})
-	@CsvUuidArray()
-	senderAccountIds?: string[];
+	// @ApiPropertyOptional({
+	// 	description: 'Sender Account IDs (comma-separated)',
+	// 	example: '1,2,3',
+	// })
+	// @CsvUuidArray()
+	// senderAccountIds?: string[];
 
-	@ApiPropertyOptional({
-		description: 'Receiver Account IDs (comma-separated)',
-		example: '1,2,3',
-	})
-	@CsvUuidArray()
-	receiverAccountIds?: string[];
+	// @ApiPropertyOptional({
+	// 	description: 'Receiver Account IDs (comma-separated)',
+	// 	example: '1,2,3',
+	// })
+	// @CsvUuidArray()
+	// receiverAccountIds?: string[];
 
 	@ApiPropertyOptional({
 		description:
@@ -81,30 +82,47 @@ export class FindTransactionDto extends BaseQueryDto {
 	type?: TransactionType[];
 
 	@ApiPropertyOptional({
-		description: 'Sort order as a JSON array of `{ id, desc }` objects',
-		example:
-			'[{"id":"transactionDate","desc":true},{"id":"amount","desc":false}]',
-		type: [FindTransactionSortDto],
+		description: 'Transaction sort order',
+		example: SortOrder.ASC,
 	})
-	@Transform(
-		({ value }) => {
-			if (!value) return undefined;
-			try {
-				const result = (
-					typeof value === 'string' ? JSON.parse(value) : value
-				) as FindTransactionSortDto[];
-				return result;
-			} catch {
-				throw new Error(
-					'Invalid `sort` parameter: must be a JSON array of { id, desc } objects',
-				);
-			}
-		},
-		{ toClassOnly: true },
-	)
 	@IsOptional()
-	// @ValidateNested({ each: true })
-	@Type(() => FindTransactionSortDto)
-	// @ArrayNotEmpty()
-	sort?: FindTransactionSortDto[];
+	@IsEnum(SortOrder)
+	order?: SortOrder;
+
+	@ApiPropertyOptional({
+		description: 'Field to sort by',
+		enum: TransactionOrderBy,
+		example: TransactionOrderBy.TRANSACTION_DATE,
+	})
+	@IsOptional()
+	@IsEnum(TransactionOrderBy)
+	orderBy?: TransactionOrderBy;
+
+	// @ApiPropertyOptional({
+	// 	description: 'Sort order as a JSON array of `{ id, desc }` objects',
+	// 	example:
+	// 		'[{"id":"transactionDate","desc":true},{"id":"amount","desc":false}]',
+	// 	type: [FindTransactionSortDto],
+	// })
+	// @Transform(
+	// 	({ value }) => {
+	// 		if (!value) return undefined;
+	// 		try {
+	// 			const result = (
+	// 				typeof value === 'string' ? JSON.parse(value) : value
+	// 			) as FindTransactionSortDto[];
+	// 			return result;
+	// 		} catch {
+	// 			throw new Error(
+	// 				'Invalid `sort` parameter: must be a JSON array of { id, desc } objects',
+	// 			);
+	// 		}
+	// 	},
+	// 	{ toClassOnly: true },
+	// )
+	// @IsOptional()
+	// // @ValidateNested({ each: true })
+	// @Type(() => FindTransactionSortDto)
+	// // @ArrayNotEmpty()
+	// sort?: FindTransactionSortDto[];
 }

@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { getDateRange } from 'src/utils/date';
 import { Brackets, Repository } from 'typeorm';
-import { AnalyticTransactionDto } from '../dtos/analytic-transaction.dto';
 import {
+	AnalyticParentCategoryDto,
+	AnalyticTransactionByDateDto,
+	AnalyticTransactionDto,
+} from '../dtos/analytic-transaction.dto';
+import {
+	AnalyticByParentCategoryResult,
 	AnalyticResult,
 	ChartResult,
-	ExpenseByParentCategoryResult,
-	IncomeByParentCategoryResult,
 } from '../interfaces/transaction.interface';
 import { Transaction } from '../transaction.entity';
 import { AnalyticChartGroupBy, TransactionType } from '../transaction.enum';
@@ -114,7 +117,7 @@ export class TransactionAnalyticService {
 	}
 
 	async getChartIncomeExpense(
-		analyticTransactionDto: AnalyticTransactionDto,
+		queryParams: AnalyticTransactionByDateDto,
 		creatorId: string,
 	): Promise<ChartResult[]> {
 		const {
@@ -122,7 +125,7 @@ export class TransactionAnalyticService {
 			accountIds,
 			categoryIds,
 			chartGroupBy = AnalyticChartGroupBy.MONTH,
-		} = analyticTransactionDto;
+		} = queryParams;
 		// 1) date range
 		const [from, to] = getDateRange(transactionDate);
 
@@ -208,12 +211,12 @@ export class TransactionAnalyticService {
 		}));
 	}
 
-	async getExpenseByParentCategories(
-		analyticTransactionDto: AnalyticTransactionDto,
+	async getAnalyticParentCategory(
+		queryParams: AnalyticParentCategoryDto,
 		creatorId: string,
-	): Promise<ExpenseByParentCategoryResult[]> {
-		const { transactionDate, accountIds, categoryIds } =
-			analyticTransactionDto;
+	): Promise<AnalyticByParentCategoryResult[]> {
+		const { transactionDate, accountIds, categoryIds, categoryType } =
+			queryParams;
 		// 1) Date range
 		const [from, to] = getDateRange(transactionDate);
 
@@ -222,78 +225,10 @@ export class TransactionAnalyticService {
 			.createQueryBuilder('t')
 			.leftJoin('t.account', 'account')
 			.select(`COALESCE(parent.name, category.name)`, 'label')
-			.addSelect(`SUM(t.amount)`, 'expense')
+			.addSelect(`SUM(t.amount)`, 'value')
 			.leftJoin('t.category', 'category')
 			.leftJoin('category.parent', 'parent')
-			.where('t.type = :type', { type: TransactionType.EXPENSE })
-			.andWhere('t.creatorId = :creatorId', { creatorId })
-			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
-
-		// 3) Optional DTO filters
-		if (accountIds?.length) {
-			queryBuilder.andWhere('account.id IN(:...accountIds)', {
-				accountIds,
-			});
-		}
-		if (categoryIds?.length) {
-			queryBuilder.andWhere(
-				new Brackets((subQb) => {
-					subQb
-						.andWhere('category.id IN(:...categoryIds)', {
-							categoryIds,
-						})
-						.orWhere('category.parent_id IN(:...categoryIds)', {
-							categoryIds,
-						});
-				}),
-			);
-		}
-
-		// 4) Group & order
-		queryBuilder
-			.groupBy(`COALESCE(parent.name, category.name)`)
-			.orderBy('expense', 'DESC');
-		const raw = await queryBuilder.getRawMany<{
-			label: string;
-			expense: string;
-		}>();
-
-		// 5) Map and roll-up “Other” if needed
-		const data = raw.map((r) => ({
-			label: r.label,
-			value: parseFloat(r.expense) || 0,
-		}));
-
-		if (data.length > 6) {
-			const top5 = data.slice(0, 5);
-			const otherTotal = data
-				.slice(5)
-				.reduce((sum, c) => sum + c.value, 0);
-			top5.push({ label: 'Other', value: otherTotal });
-			return top5;
-		}
-
-		return data;
-	}
-
-	async getIncomeByParentCategories(
-		analyticTransactionDto: AnalyticTransactionDto,
-		creatorId: string,
-	): Promise<IncomeByParentCategoryResult[]> {
-		const { transactionDate, accountIds, categoryIds } =
-			analyticTransactionDto;
-		// 1) Date range
-		const [from, to] = getDateRange(transactionDate);
-
-		// 2) Build the query
-		const queryBuilder = this.transactionRepo
-			.createQueryBuilder('t')
-			.leftJoin('t.account', 'account')
-			.select(`COALESCE(parent.name, category.name)`, 'label')
-			.addSelect(`SUM(t.amount)`, 'income')
-			.leftJoin('t.category', 'category')
-			.leftJoin('category.parent', 'parent')
-			.where('t.type = :type', { type: TransactionType.INCOME })
+			.where('t.type = :type', { type: categoryType })
 			.andWhere('t.creatorId = :creatorId', { creatorId })
 			.andWhere('t.transactionDate BETWEEN :from AND :to', { from, to });
 
@@ -320,13 +255,13 @@ export class TransactionAnalyticService {
 		// 4) Group & order
 		const raw = await queryBuilder
 			.groupBy(`COALESCE(parent.name, category.name)`)
-			.orderBy('income', 'DESC')
-			.getRawMany<{ label: string; income: string }>();
+			.orderBy('value', 'DESC')
+			.getRawMany<{ label: string; value: string }>();
 
 		// 5) Map and roll-up “Other” if needed
 		const data = raw.map((r) => ({
 			label: r.label,
-			value: parseFloat(r.income) || 0,
+			value: parseFloat(r.value) || 0,
 		}));
 
 		if (data.length > 6) {

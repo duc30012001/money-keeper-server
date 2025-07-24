@@ -20,12 +20,7 @@ export interface ChartResult {
 	expense: number;
 }
 
-export interface ExpenseByParentCategoryResult {
-	label: string;
-	value: number;
-}
-
-export interface IncomeByParentCategoryResult {
+export interface AnalyticByParentCategoryResult {
 	label: string;
 	value: number;
 }
