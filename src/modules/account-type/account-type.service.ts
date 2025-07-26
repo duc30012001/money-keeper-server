@@ -10,6 +10,9 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { Locale } from 'src/common/enums/common';
+import { accountTypeInitial } from 'src/initial-data';
+import { getName } from 'src/utils/common';
 import { IconService } from '../icon/icon.service';
 import { AccountType } from './account-type.entity';
 import { CreateAccountTypeDto } from './dtos/create-account-type.dto';
@@ -168,5 +171,20 @@ export class AccountTypeService {
 				name: 'ASC',
 			},
 		});
+	}
+
+	async init(creatorId: string, locale: Locale) {
+		const data = accountTypeInitial.map((item, index) => {
+			const { nameVi, nameEn, iconId } = item;
+			return this.accountTypeRepository.create({
+				name: getName({ nameEn, nameVi, locale }),
+				creatorId,
+				icon: {
+					id: iconId,
+				},
+				sortOrder: index + 1,
+			});
+		});
+		return this.accountTypeRepository.save(data);
 	}
 }

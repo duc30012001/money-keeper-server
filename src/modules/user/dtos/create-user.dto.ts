@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsBoolean,
 	IsEmail,
@@ -7,6 +7,7 @@ import {
 	IsString,
 	MinLength,
 } from 'class-validator';
+import { Locale } from 'src/common/enums/common';
 import { UserRole } from '../user.enum';
 
 export class CreateUserDto {
@@ -46,4 +47,12 @@ export class CreateUserDto {
 	@IsEnum(UserRole)
 	@IsOptional()
 	role?: UserRole;
+
+	@ApiPropertyOptional({
+		description: 'Locale',
+		example: 'en',
+	})
+	@IsOptional()
+	@IsEnum(Locale)
+	locale?: Locale;
 }

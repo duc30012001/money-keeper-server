@@ -6,7 +6,6 @@ import {
 	ManyToOne,
 	OneToMany,
 	RelationCount,
-	Unique,
 } from 'typeorm';
 
 import { BaseCreatorEntity } from 'src/common/entities/base-creator.entity';
@@ -14,7 +13,6 @@ import { Account } from '../account/account.entity';
 import { Icon } from '../icon/icon.entity';
 
 @Entity('account_types')
-@Unique(['name'])
 export class AccountType extends BaseCreatorEntity {
 	@Column({ name: 'name' })
 	@IsNotEmpty()

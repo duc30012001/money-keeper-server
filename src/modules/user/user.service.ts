@@ -12,7 +12,10 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { Locale } from 'src/common/enums/common';
 import { AuthMessages } from 'src/common/messages';
+import { AccountTypeService } from '../account-type/account-type.service';
+import { CategoryService } from '../category/services/category.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { ListUserDto } from './dtos/get-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
@@ -23,9 +26,11 @@ export class UserService {
 	constructor(
 		@InjectRepository(User)
 		private readonly userRepo: Repository<User>,
+		private readonly accountTypeService: AccountTypeService,
+		private readonly categoryService: CategoryService,
 	) {}
 
-	async create(dto: CreateUserDto): Promise<User> {
+	async create({ locale, ...dto }: CreateUserDto): Promise<User> {
 		// 1) Check duplicate email
 		const exists = await this.userRepo.findOne({
 			where: { email: dto.email },
@@ -39,7 +44,12 @@ export class UserService {
 			...dto,
 			password: await hash(dto.password),
 		});
-		return this.userRepo.save(user);
+		const savedUser = await this.userRepo.save(user);
+
+		await this.categoryService.init(user.id, locale ?? Locale.EN);
+		await this.accountTypeService.init(user.id, locale ?? Locale.EN);
+
+		return savedUser;
 	}
 
 	async update(id: string, dto: UpdateUserDto): Promise<User> {

@@ -1,5 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import { Locale } from 'src/common/enums/common';
 
 export class RegisterDto {
 	@ApiProperty({
@@ -15,4 +16,12 @@ export class RegisterDto {
 	})
 	@IsString()
 	password: string;
+
+	@ApiPropertyOptional({
+		description: 'Locale',
+		example: 'en',
+	})
+	@IsOptional()
+	@IsEnum(Locale)
+	locale?: Locale;
 }

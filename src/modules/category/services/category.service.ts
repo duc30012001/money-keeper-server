@@ -6,14 +6,18 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TreeRepository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 
 import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { Locale } from 'src/common/enums/common';
+import { categoryInitial } from 'src/initial-data';
 import { IconService } from 'src/modules/icon/icon.service';
 import { TransactionService } from 'src/modules/transaction/services/transaction.service';
 import { buildTree, TreeNode } from 'src/utils/build-tree';
+import { getName } from 'src/utils/common';
 import { Category } from '../category.entity';
 import { CreateCategoryDto } from '../dtos/create-category.dto';
 import { FindCategoriesDto } from '../dtos/find-categories.dto';
@@ -287,5 +291,39 @@ export class CategoryService {
 
 		// Trả về cây đã sắp xếp lại
 		return this.categoryTreeRepo.findTrees();
+	}
+
+	async init(creatorId: string, locale: Locale) {
+		const data = categoryInitial.map((item) => {
+			const { nameVi, nameEn, iconId, children } = item;
+			const parentId = uuidv4();
+			return this.categoryTreeRepo.create({
+				id: parentId,
+				name: getName({ nameEn, nameVi, locale }),
+				creatorId,
+				icon: {
+					id: iconId,
+				},
+				type: item.type,
+				children: children?.map((child) =>
+					this.categoryTreeRepo.create({
+						name: getName({
+							nameEn: child.nameEn,
+							nameVi: child.nameVi,
+							locale,
+						}),
+						type: item.type,
+						icon: {
+							id: child.iconId,
+						},
+						parent: {
+							id: parentId,
+						},
+						creatorId,
+					}),
+				),
+			});
+		});
+		return this.categoryTreeRepo.save(data);
 	}
 }

@@ -25,7 +25,7 @@ import { CategoryType } from './category.enum';
 @Entity('categories')
 @Tree('closure-table')
 export class Category extends BaseCreatorEntity {
-	@Column({ name: 'name', unique: true })
+	@Column({ name: 'name' })
 	@IsNotEmpty()
 	@IsString()
 	name: string;

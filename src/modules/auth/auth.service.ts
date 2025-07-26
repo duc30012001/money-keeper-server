@@ -17,12 +17,6 @@ export class AuthService {
 		private readonly jwt: JwtService,
 	) {}
 
-	/** If you handle signup here, hash with Argon2 */
-	async signup(email: string, password: string) {
-		const hash = await argon2.hash(password);
-		return this.userService.create({ email, password: hash });
-	}
-
 	/** Validate credentials and issue tokens */
 	async signin(dto: SigninDto) {
 		const user = await this.userService.getOneByEmail(dto.email);
