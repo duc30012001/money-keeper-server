@@ -96,27 +96,27 @@ export class AccountService {
 	}
 
 	async create(
-		createAccountDto: CreateAccountDto,
+		payload: CreateAccountDto,
 		creatorId: string,
 	): Promise<Account> {
-		const existingAccount = await this.findByName(createAccountDto.name);
+		const existingAccount = await this.findByName(payload.name);
 		if (existingAccount) {
 			throw new ConflictException(
-				`Account with name '${createAccountDto.name}' already exists`,
+				`Account with name '${payload.name}' already exists`,
 			);
 		}
 
 		const accountType = await this.accountTypeService.findOne(
-			createAccountDto.accountTypeId,
+			payload.accountTypeId,
 			creatorId,
 		);
 
-		const icon = await this.iconService.findOne(createAccountDto.iconId);
+		const icon = await this.iconService.findOne(payload.iconId);
 
 		const account = this.accountRepository.create({
-			...createAccountDto,
-			initialBalance: createAccountDto.initialBalance?.toString() ?? '0',
-			balance: createAccountDto.initialBalance?.toString() ?? '0',
+			...payload,
+			initialBalance: payload.initialBalance?.toString() ?? '0',
+			balance: payload.initialBalance?.toString() ?? '0',
 			accountType,
 			icon,
 			creatorId,
@@ -127,7 +127,7 @@ export class AccountService {
 
 	async update(
 		id: string,
-		updateAccountDto: UpdateAccountDto,
+		payload: UpdateAccountDto,
 		creatorId: string,
 	): Promise<Account> {
 		// load existing account (including its accountType relation)
@@ -138,53 +138,48 @@ export class AccountService {
 		if (!account) throw new NotFoundException(`Account ${id} not found`);
 
 		// 1) name-uniqueness check
-		if (updateAccountDto.name && updateAccountDto.name !== account.name) {
-			const existing = await this.findByName(updateAccountDto.name);
+		if (payload.name && payload.name !== account.name) {
+			const existing = await this.findByName(payload.name);
 			if (existing) {
 				throw new ConflictException(
-					`Account with name '${updateAccountDto.name}' already exists`,
+					`Account with name '${payload.name}' already exists`,
 				);
 			}
 		}
 
 		// 2) accountType change
 		if (
-			updateAccountDto.accountTypeId &&
-			updateAccountDto.accountTypeId !== account.accountType.id
+			payload.accountTypeId &&
+			payload.accountTypeId !== account.accountType.id
 		) {
 			const acctType = await this.accountTypeService.findOne(
-				updateAccountDto.accountTypeId,
+				payload.accountTypeId,
 				creatorId,
 			);
 			account.accountType = acctType;
 		}
 
 		// 3) icon change
-		if (
-			updateAccountDto.iconId &&
-			updateAccountDto.iconId !== account.icon?.id
-		) {
-			const icon = await this.iconService.findOne(
-				updateAccountDto.iconId,
-			);
+		if (payload.iconId && payload.iconId !== account.icon?.id) {
+			const icon = await this.iconService.findOne(payload.iconId);
 			account.icon = icon;
 		}
 
 		// 4) initialBalance change → adjust balance by the delta
 		if (
-			updateAccountDto.initialBalance !== undefined &&
-			parseFloat(updateAccountDto.initialBalance.toString()) !==
+			payload.initialBalance !== undefined &&
+			parseFloat(payload.initialBalance.toString()) !==
 				parseFloat(account.initialBalance)
 		) {
 			const delta =
-				parseFloat(updateAccountDto.initialBalance.toString()) -
+				parseFloat(payload.initialBalance.toString()) -
 				parseFloat(account.initialBalance);
 			const newBalance = Number(account.balance) + delta;
 			account.balance = newBalance.toString();
 		}
 
 		// 5) copy over any other fields (including initialBalance)
-		Object.assign(account, updateAccountDto);
+		Object.assign(account, payload);
 
 		await this.accountRepository.save(account);
 

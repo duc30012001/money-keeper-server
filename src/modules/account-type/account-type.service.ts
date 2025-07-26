@@ -10,6 +10,7 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { IconService } from '../icon/icon.service';
 import { AccountType } from './account-type.entity';
 import { CreateAccountTypeDto } from './dtos/create-account-type.dto';
 import { UpdateAccountTypeDto } from './dtos/update-account-type.dto';
@@ -20,6 +21,7 @@ export class AccountTypeService {
 	constructor(
 		@InjectRepository(AccountType)
 		private readonly accountTypeRepository: Repository<AccountType>,
+		private readonly iconService: IconService,
 	) {}
 
 	async findAll(
@@ -31,6 +33,7 @@ export class AccountTypeService {
 				name: 'ASC',
 			},
 			where: { creatorId },
+			relations: ['icon'],
 		});
 
 		const pageSize = total;
@@ -48,6 +51,7 @@ export class AccountTypeService {
 	async findOne(id: string, creatorId: string): Promise<AccountType> {
 		const accountType = await this.accountTypeRepository.findOne({
 			where: { id, creatorId },
+			relations: ['icon'],
 		});
 		if (!accountType) {
 			throw new NotFoundException(`Account Type with ID ${id} not found`);
@@ -65,21 +69,24 @@ export class AccountTypeService {
 	}
 
 	async create(
-		createAccountTypeDto: CreateAccountTypeDto,
+		payload: CreateAccountTypeDto,
 		creatorId: string,
 	): Promise<AccountType> {
 		const existingAccountType = await this.findByName(
-			createAccountTypeDto.name,
+			payload.name,
 			creatorId,
 		);
 		if (existingAccountType) {
 			throw new ConflictException(
-				`Account Type with name '${createAccountTypeDto.name}' already exists`,
+				`Account Type with name '${payload.name}' already exists`,
 			);
 		}
 
+		const icon = await this.iconService.findOne(payload.iconId);
+
 		const accountType = this.accountTypeRepository.create({
-			...createAccountTypeDto,
+			...payload,
+			icon,
 			creatorId,
 		});
 		return this.accountTypeRepository.save(accountType);
@@ -87,27 +94,30 @@ export class AccountTypeService {
 
 	async update(
 		id: string,
-		updateAccountTypeDto: UpdateAccountTypeDto,
+		payload: UpdateAccountTypeDto,
 		creatorId: string,
 	): Promise<AccountType> {
 		const accountType = await this.findOne(id, creatorId);
 
-		if (
-			updateAccountTypeDto.name &&
-			updateAccountTypeDto.name !== accountType.name
-		) {
+		if (payload.name && payload.name !== accountType.name) {
 			const existingAccountType = await this.findByName(
-				updateAccountTypeDto.name,
+				payload.name,
 				creatorId,
 			);
 			if (existingAccountType) {
 				throw new ConflictException(
-					`Account Type with name '${updateAccountTypeDto.name}' already exists`,
+					`Account Type with name '${payload.name}' already exists`,
 				);
 			}
 		}
 
-		await this.accountTypeRepository.update(id, updateAccountTypeDto);
+		if (payload.iconId && payload.iconId !== accountType.icon?.id) {
+			const icon = await this.iconService.findOne(payload.iconId);
+			accountType.icon = icon;
+		}
+		Object.assign(accountType, payload);
+
+		await this.accountTypeRepository.save(accountType);
 		return this.findOne(id, creatorId);
 	}
 
