@@ -1,5 +1,16 @@
 import { CategoryType } from './modules/category/category.enum';
 
+export const accountInitial = [
+	{
+		nameVi: 'Ví',
+		nameEn: 'Wallet',
+		accountType: {
+			nameVi: 'Tiền mặt',
+			nameEn: 'Cash',
+		},
+	},
+];
+
 export const accountTypeInitial = [
 	{
 		nameVi: 'Tiền mặt',

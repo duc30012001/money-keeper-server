@@ -10,8 +10,12 @@ import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
+import { Locale } from 'src/common/enums/common';
+import { accountInitial } from 'src/initial-data';
+import { AccountType } from 'src/modules/account-type/account-type.entity';
 import { IconService } from 'src/modules/icon/icon.service';
 import { TransactionService } from 'src/modules/transaction/services/transaction.service';
+import { getName } from 'src/utils/common';
 import { AccountTypeService } from '../../account-type/account-type.service';
 import { Account } from '../account.entity';
 import { CreateAccountDto } from '../dtos/create-account.dto';
@@ -233,5 +237,31 @@ export class AccountService {
 				name: 'ASC',
 			},
 		});
+	}
+
+	async init(creatorId: string, locale: Locale) {
+		const data = accountInitial.map(async (item, index) => {
+			const { nameVi, nameEn, accountType } = item;
+			const accountTypeName = getName({
+				nameEn: accountType.nameEn,
+				nameVi: accountType.nameVi,
+				locale,
+			});
+			const accountTypeData = await this.accountTypeService.findByName(
+				accountTypeName,
+				creatorId,
+				{ icon: true },
+			);
+			return this.accountRepository.create({
+				name: getName({ nameEn, nameVi, locale }),
+				creatorId,
+				icon: accountTypeData?.icon,
+				sortOrder: index + 1,
+				initialBalance: '0',
+				balance: '0',
+				accountType: accountTypeData as AccountType,
+			});
+		});
+		return this.accountRepository.save(await Promise.all(data));
 	}
 }

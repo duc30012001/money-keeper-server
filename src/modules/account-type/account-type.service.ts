@@ -4,7 +4,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { FindOneOptions, In, Repository } from 'typeorm';
 
 import {
 	PaginatedResponseDto,
@@ -62,12 +62,14 @@ export class AccountTypeService {
 		return accountType;
 	}
 
-	private async findByName(
+	async findByName(
 		name: string,
 		creatorId: string,
+		relations?: FindOneOptions<AccountType>['relations'],
 	): Promise<AccountType | null> {
 		return this.accountTypeRepository.findOne({
 			where: { name, creatorId },
+			relations,
 		});
 	}
 

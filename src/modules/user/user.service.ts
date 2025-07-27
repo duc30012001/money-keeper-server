@@ -1,4 +1,3 @@
-// src/modules/user/user.service.ts
 import {
 	ConflictException,
 	Injectable,
@@ -6,15 +5,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hash } from 'argon2';
-import { FindOptionsWhere, ILike, Not, Repository } from 'typeorm';
-
 import {
 	PaginatedResponseDto,
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { Locale } from 'src/common/enums/common';
 import { AuthMessages } from 'src/common/messages';
+import { FindOptionsWhere, ILike, Not, Repository } from 'typeorm';
 import { AccountTypeService } from '../account-type/account-type.service';
+import { AccountService } from '../account/services/account.service';
 import { CategoryService } from '../category/services/category.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { ListUserDto } from './dtos/get-user.dto';
@@ -28,6 +27,7 @@ export class UserService {
 		private readonly userRepo: Repository<User>,
 		private readonly accountTypeService: AccountTypeService,
 		private readonly categoryService: CategoryService,
+		private readonly accountService: AccountService,
 	) {}
 
 	async create({ locale, ...dto }: CreateUserDto): Promise<User> {
@@ -48,6 +48,7 @@ export class UserService {
 
 		await this.categoryService.init(user.id, locale ?? Locale.EN);
 		await this.accountTypeService.init(user.id, locale ?? Locale.EN);
+		await this.accountService.init(user.id, locale ?? Locale.EN);
 
 		return savedUser;
 	}
