@@ -11,7 +11,7 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { Locale } from 'src/common/enums/common';
-import { accountTypeInitial } from 'src/initial-data';
+import { accountTypeInitial } from 'src/initial-data/initial-data';
 import { getName } from 'src/utils/common';
 import { IconService } from '../icon/icon.service';
 import { AccountType } from './account-type.entity';

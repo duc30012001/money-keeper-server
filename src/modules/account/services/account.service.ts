@@ -11,7 +11,7 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { Locale } from 'src/common/enums/common';
-import { accountInitial } from 'src/initial-data';
+import { accountInitial } from 'src/initial-data/initial-data';
 import { AccountType } from 'src/modules/account-type/account-type.entity';
 import { IconService } from 'src/modules/icon/icon.service';
 import { TransactionService } from 'src/modules/transaction/services/transaction.service';

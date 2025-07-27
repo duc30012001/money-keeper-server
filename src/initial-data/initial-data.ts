@@ -1,4 +1,4 @@
-import { CategoryType } from './modules/category/category.enum';
+import { CategoryType } from '../modules/category/category.enum';
 
 export const accountInitial = [
 	{

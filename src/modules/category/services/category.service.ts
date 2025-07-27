@@ -13,7 +13,7 @@ import {
 	PaginationMeta,
 } from 'src/common/dtos/response.dto';
 import { Locale } from 'src/common/enums/common';
-import { categoryInitial } from 'src/initial-data';
+import { categoryInitial } from 'src/initial-data/initial-data';
 import { IconService } from 'src/modules/icon/icon.service';
 import { TransactionService } from 'src/modules/transaction/services/transaction.service';
 import { buildTree, TreeNode } from 'src/utils/build-tree';
