@@ -27,9 +27,9 @@ jobs:
                   # disable host checking (only if you trust the server)
                   # run each step with sudo
                     ssh -o StrictHostKeyChecking=no -p ${PORT:-22} ${USER}@${HOST} '
-                        git config --global --add safe.directory /www/wwwroot/dev/money-keeper-server
+                        git config --global --add safe.directory /www/wwwroot/money-keeper-server
 
-                        cd /www/wwwroot/dev/money-keeper-server || exit 1
+                        cd /www/wwwroot/money-keeper-server || exit 1
                         sudo git pull origin main
 
                         TAG=$(git rev-parse --short HEAD || echo "latest")

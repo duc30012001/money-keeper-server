@@ -57,13 +57,9 @@ Money Keeper Server built with **NestJS** and **TypeORM**. It helps you track yo
 
 4. **Build and Run Docker:**
 
-    To build and run the application with Docker, use the following command:
-
-    ```bash
-    docker compose --env-file .env.production.local up -d
     ```
-
-    This will build the Docker container using the configuration in the `.env.production.local` file and run it in the background.
+    docker compose -f docker-compose.yml up --build -d
+    ```
 
 ## Usage
 
