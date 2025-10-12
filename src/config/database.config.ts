@@ -16,9 +16,9 @@ export class DatabaseConfigService implements TypeOrmOptionsFactory {
 			password: this.configService.get<string>('DB_PASSWORD'),
 			database: this.configService.get<string>('DB_DATABASE'),
 
-			ssl: {
-				rejectUnauthorized: false, // if you don’t have a CA bundle
-			},
+			// ssl: {
+			// 	rejectUnauthorized: false, // if you don’t have a CA bundle
+			// },
 
 			// Entities
 			entities: [__dirname + '/../**/*.entity{.ts,.js}'],
