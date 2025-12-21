@@ -209,6 +209,41 @@ export class TransactionService {
 			.catch((err) => this._wrapError(err, 'remove transaction'));
 	}
 
+	async bulkRemove(
+		ids: string[],
+		creatorId: string,
+	): Promise<{
+		success: number;
+		failed: number;
+		errors: { id: string; message: string }[];
+	}> {
+		const result = {
+			success: 0,
+			failed: 0,
+			errors: [] as { id: string; message: string }[],
+		};
+
+		for (const id of ids) {
+			try {
+				await this.ds.transaction((manager) =>
+					this._remove(manager, id, creatorId),
+				);
+				result.success++;
+			} catch (error) {
+				result.failed++;
+				result.errors.push({
+					id,
+					message:
+						error instanceof Error
+							? error.message
+							: 'Unknown error',
+				});
+			}
+		}
+
+		return result;
+	}
+
 	async removeByAccountId(
 		accountId: string,
 		creatorId: string,

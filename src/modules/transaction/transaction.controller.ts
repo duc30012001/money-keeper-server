@@ -24,6 +24,10 @@ import {
 	AnalyticTransactionByDateDto,
 	AnalyticTransactionDto,
 } from './dtos/analytic-transaction.dto';
+import {
+	BulkDeleteResultDto,
+	BulkDeleteTransactionDto,
+} from './dtos/bulk-delete-transaction.dto';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { FindTransactionDto } from './dtos/find-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
@@ -161,5 +165,18 @@ export class TransactionController {
 		@Req() req: Request,
 	): Promise<void> {
 		return this.transactionService.remove(id, req.user?.sub as string);
+	}
+
+	@Post('bulk-delete')
+	@ApiOperation({ summary: 'Bulk delete transactions' })
+	async bulkRemove(
+		@Body() dto: BulkDeleteTransactionDto,
+		@Req() req: Request,
+	): Promise<ResponseDto<BulkDeleteResultDto>> {
+		const result = await this.transactionService.bulkRemove(
+			dto.ids,
+			req.user?.sub as string,
+		);
+		return new ResponseDto(result);
 	}
 }

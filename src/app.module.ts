@@ -13,6 +13,7 @@ import { AccountModule } from './modules/account/account.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoryModule } from './modules/category/category.module';
 import { IconModule } from './modules/icon/icon.module';
+import { ImportExportModule } from './modules/import-export/import-export.module';
 import { InitModule } from './modules/init/init.module';
 import { KeysModule } from './modules/keys/keys.module';
 import { TransactionModule } from './modules/transaction/transaction.module';
@@ -56,6 +57,7 @@ import { UserModule } from './modules/user/user.module';
 		AccountModule,
 		TransactionModule,
 		IconModule,
+		ImportExportModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
