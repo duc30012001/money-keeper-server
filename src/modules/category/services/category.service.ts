@@ -38,7 +38,7 @@ export class CategoryService {
 		creatorId: string,
 	): Promise<PaginatedResponseDto<TreeNode<Category, 'children'>>> {
 		// 1. Xây điều kiện filter từ DTO
-		const { keyword, type } = query;
+		const { keyword, type, showTransactionCount } = query;
 
 		// 2. Lấy toàn bộ categories flat kèm relation parent
 		const allCats = await this.categoryTreeRepo.find({
@@ -51,7 +51,27 @@ export class CategoryService {
 			where: { creatorId },
 		});
 
-		// 3. Tách ra những node THOẢ điều kiện filter
+		// 3. Get transaction counts if requested
+		let transactionCountMap = new Map<string, number>();
+		if (showTransactionCount) {
+			const counts = await this.categoryTreeRepo
+				.createQueryBuilder('category')
+				.leftJoin('category.transaction', 'transaction')
+				.select('category.id', 'categoryId')
+				.addSelect('COUNT(transaction.id)', 'count')
+				.where('category.creatorId = :creatorId', { creatorId })
+				.groupBy('category.id')
+				.getRawMany();
+
+			transactionCountMap = new Map<string, number>(
+				counts.map((c: { categoryId: string; count: string }) => [
+					c.categoryId,
+					parseInt(c.count, 10),
+				]),
+			);
+		}
+
+		// 4. Tách ra những node THOẢ điều kiện filter
 		const matched = allCats.filter((cat) => {
 			if (
 				keyword &&
@@ -65,7 +85,7 @@ export class CategoryService {
 			return true;
 		});
 
-		// 4. Thu thập tất cả ancestor của mỗi matched node
+		// 5. Thu thập tất cả ancestor của mỗi matched node
 		const idToCat = new Map<string, Category>(
 			allCats.map((c) => [c.id, c]),
 		);
@@ -79,21 +99,34 @@ export class CategoryService {
 			}
 		}
 
-		// 5. Xác định tập các node được giữ lại (matched + ancestors)
+		// 6. Xác định tập các node được giữ lại (matched + ancestors)
 		const allowedIds = new Set<string>([
 			...matched.map((c) => c.id),
 			...ancestorIds,
 		]);
-		const allowedNodes = allCats.filter((c) => allowedIds.has(c.id));
+		let allowedNodes = allCats.filter((c) => allowedIds.has(c.id));
 
-		// 6. Build tree
+		// 7. Add direct transaction count to each node if requested
+		if (showTransactionCount) {
+			allowedNodes = allowedNodes.map((cat) => ({
+				...cat,
+				transactionCount: transactionCountMap.get(cat.id) || 0,
+			}));
+		}
+
+		// 8. Build tree
 		const trees = buildTree(allowedNodes, {
 			idKey: 'id',
 			parentKey: 'parent',
 			childrenKey: 'children',
 		});
 
-		// 7. Trả về kèm metadata
+		// 9. If showTransactionCount, recalculate parent counts to include children
+		if (showTransactionCount) {
+			this.aggregateTransactionCounts(trees);
+		}
+
+		// 10. Trả về kèm metadata
 		const total = allowedNodes.length;
 		const meta = new PaginationMeta({
 			total,
@@ -101,6 +134,33 @@ export class CategoryService {
 			pageSize: total,
 		});
 		return new PaginatedResponseDto(trees, meta);
+	}
+
+	/**
+	 * Recursively aggregate transaction counts from children to parents.
+	 * Each parent's count = its direct count + sum of all children's counts.
+	 */
+	private aggregateTransactionCounts(
+		nodes: (Category & {
+			transactionCount?: number;
+			children?: Category[];
+		})[],
+	): number {
+		let total = 0;
+		for (const node of nodes) {
+			const directCount = node.transactionCount || 0;
+			const childrenCount = node.children?.length
+				? this.aggregateTransactionCounts(
+						node.children as (Category & {
+							transactionCount?: number;
+							children?: Category[];
+						})[],
+					)
+				: 0;
+			node.transactionCount = directCount + childrenCount;
+			total += node.transactionCount;
+		}
+		return total;
 	}
 
 	/** Lấy một node cùng toàn bộ descendants */
