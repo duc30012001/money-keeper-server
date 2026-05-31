@@ -5,9 +5,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { ResponseDto } from 'src/common/dtos/response.dto';
 import { User } from '../user/user.entity';
 import { AuthService } from './auth.service';
-import { RefreshDto } from './dtos/refresh-token.dto';
-import { RegisterDto } from './dtos/register.dto';
-import { GetTokenResponse, SigninDto } from './dtos/signin.dto';
+import { FirebaseSigninDto } from './dtos/firebase-signin.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -22,30 +20,12 @@ export class AuthController {
 	}
 
 	@Public()
-	@Post('signin')
-	@ApiOperation({ summary: 'Sign in with email and password' })
-	async signin(
-		@Body() dto: SigninDto,
-	): Promise<ResponseDto<GetTokenResponse>> {
-		const data = await this.auth.signin(dto);
-		return new ResponseDto(data);
-	}
-
-	@Public()
-	@Post('register')
-	@ApiOperation({ summary: 'Sign in with email and password' })
-	async register(@Body() dto: RegisterDto): Promise<ResponseDto<User>> {
-		const data = await this.auth.register(dto);
-		return new ResponseDto(data);
-	}
-
-	@Public()
-	@Post('refresh')
-	@ApiOperation({ summary: 'Refresh access token using refresh token' })
-	async refresh(
-		@Body() dto: RefreshDto,
-	): Promise<ResponseDto<GetTokenResponse>> {
-		const data = await this.auth.refresh(dto);
+	@Post('firebase-signin')
+	@ApiOperation({ summary: 'Sign in with Firebase ID token' })
+	async firebaseSignin(
+		@Body() dto: FirebaseSigninDto,
+	): Promise<ResponseDto<User>> {
+		const data = await this.auth.signinWithFirebase(dto);
 		return new ResponseDto(data);
 	}
 }

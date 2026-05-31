@@ -31,14 +31,10 @@ export class InitService implements OnModuleInit {
 				const defaultEmail = this.configService.get<string>(
 					'DEFAULT_ADMIN_EMAIL',
 				);
-				const defaultPassword = this.configService.get<string>(
-					'DEFAULT_ADMIN_PASSWORD',
-				);
 
-				if (defaultEmail && defaultPassword) {
+				if (defaultEmail) {
 					await this.userService.create({
 						email: defaultEmail,
-						password: defaultPassword,
 						role: UserRole.ADMIN,
 						isActive: true,
 					});

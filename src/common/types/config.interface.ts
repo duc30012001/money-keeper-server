@@ -1,13 +1,3 @@
-export interface JwtConfig {
-	algorithm: string;
-	privateKey: string;
-	publicKey: string;
-	accessTokenExpiresIn: string;
-	refreshTokenExpiresIn: string;
-	jwksUri: string;
-	kid: string;
-}
-
 export interface DatabaseConfig {
 	host: string;
 	port: number;
@@ -16,10 +6,14 @@ export interface DatabaseConfig {
 	database: string;
 }
 
+export interface FirebaseConfig {
+	serviceAccountPath: string;
+}
+
 export interface AppConfig {
 	app: {
 		port: number;
 	};
 	database: DatabaseConfig;
-	jwt: JwtConfig;
+	firebase: FirebaseConfig;
 }

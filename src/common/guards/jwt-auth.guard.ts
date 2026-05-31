@@ -1,4 +1,3 @@
-// src/common/guards/jwt-auth.guard.ts
 import {
 	CanActivate,
 	ExecutionContext,
@@ -6,16 +5,21 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Request } from 'express';
-import { JwtService } from 'src/modules/jwt/jwt.service';
+import { FirebaseAuthService } from 'src/modules/firebase/firebase-auth.service';
+import { User } from 'src/modules/user/user.entity';
+import { Repository } from 'typeorm';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthMessages } from '../messages';
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class FirebaseAuthGuard implements CanActivate {
 	constructor(
-		private readonly jwtService: JwtService,
+		private readonly firebaseAuth: FirebaseAuthService,
 		private readonly reflector: Reflector,
+		@InjectRepository(User)
+		private readonly userRepo: Repository<User>,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -26,7 +30,7 @@ export class JwtAuthGuard implements CanActivate {
 		);
 		if (isPublic) return true;
 
-		// 2) Otherwise enforce JWT
+		// 2) Otherwise enforce Firebase ID Token
 		const req = context.switchToHttp().getRequest<Request>();
 		const authHeader = req.headers['authorization'];
 
@@ -37,13 +41,34 @@ export class JwtAuthGuard implements CanActivate {
 		const token = authHeader.replace('Bearer ', '').trim();
 
 		try {
-			const payload = await this.jwtService.verifyTokenAsync(token);
-			// attach decoded payload to request.user
-			req['user'] = payload;
+			const firebaseUser = await this.firebaseAuth.verifyIdToken(token);
+
+			// Resolve internal user by Firebase UID
+			const user = await this.userRepo.findOne({
+				where: { firebaseUid: firebaseUser.uid },
+				select: {
+					id: true,
+					email: true,
+					firebaseUid: true,
+					isActive: true,
+				},
+			});
+
+			if (!user || !user.isActive) {
+				throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
+			}
+
+			// Attach payload compatible with existing controllers (req.user.sub)
+			req['user'] = {
+				sub: user.id,
+				firebaseUid: firebaseUser.uid,
+				email: firebaseUser.email,
+			};
 			return true;
 		} catch (err) {
+			if (err instanceof UnauthorizedException) throw err;
 			throw new UnauthorizedException(
-				err || AuthMessages.INVALID_OR_EXPIRED_TOKEN,
+				AuthMessages.INVALID_OR_EXPIRED_TOKEN,
 			);
 		}
 	}

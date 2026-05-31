@@ -5,7 +5,6 @@ import {
 	IsEnum,
 	IsOptional,
 	IsString,
-	MinLength,
 } from 'class-validator';
 import { Locale } from 'src/common/enums/common';
 import { UserRole } from '../user.enum';
@@ -18,14 +17,26 @@ export class CreateUserDto {
 	@IsEmail()
 	email: string;
 
-	@ApiProperty({
-		description: 'User password (min 6 characters)',
-		example: 'password123',
-		minLength: 6,
+	@ApiPropertyOptional({
+		description: 'Firebase UID',
 	})
+	@IsOptional()
 	@IsString()
-	@MinLength(6)
-	password: string;
+	firebaseUid?: string;
+
+	@ApiPropertyOptional({
+		description: 'Display name',
+	})
+	@IsOptional()
+	@IsString()
+	displayName?: string;
+
+	@ApiPropertyOptional({
+		description: 'Photo URL',
+	})
+	@IsOptional()
+	@IsString()
+	photoUrl?: string;
 
 	@ApiProperty({
 		description: 'Whether the user is active',

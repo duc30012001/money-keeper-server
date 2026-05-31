@@ -12,14 +12,6 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 	email?: string;
 
 	@ApiProperty({
-		description: 'User password (min 6 characters)',
-		example: 'password123',
-		minLength: 6,
-		required: false,
-	})
-	password?: string;
-
-	@ApiProperty({
 		description: 'Whether the user is active',
 		example: true,
 		required: false,

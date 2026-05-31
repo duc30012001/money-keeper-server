@@ -4,7 +4,6 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { hash } from 'argon2';
 import {
 	PaginatedResponseDto,
 	PaginationMeta,
@@ -15,6 +14,7 @@ import { FindOptionsWhere, ILike, Not, Repository } from 'typeorm';
 import { AccountTypeService } from '../account-type/account-type.service';
 import { AccountService } from '../account/services/account.service';
 import { CategoryService } from '../category/services/category.service';
+import { FirebaseUser } from '../firebase/firebase-auth.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { ListUserDto } from './dtos/get-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
@@ -30,8 +30,9 @@ export class UserService {
 		private readonly accountService: AccountService,
 	) {}
 
-	async create({ locale, ...dto }: CreateUserDto): Promise<User> {
-		// 1) Check duplicate email
+	/** Create a user directly (used by admin and init module) */
+	async create(dto: CreateUserDto): Promise<User> {
+		// Check duplicate email
 		const exists = await this.userRepo.findOne({
 			where: { email: dto.email },
 		});
@@ -39,16 +40,77 @@ export class UserService {
 			throw new ConflictException(AuthMessages.EMAIL_IN_USE);
 		}
 
-		// 2) Hash and save
-		const user = this.userRepo.create({
-			...dto,
-			password: await hash(dto.password),
-		});
+		const { locale, ...userData } = dto;
+		const user = this.userRepo.create(userData);
 		const savedUser = await this.userRepo.save(user);
 
-		await this.categoryService.init(user.id, locale ?? Locale.EN);
-		await this.accountTypeService.init(user.id, locale ?? Locale.EN);
-		await this.accountService.init(user.id, locale ?? Locale.EN);
+		await this.categoryService.init(savedUser.id, locale ?? Locale.EN);
+		await this.accountTypeService.init(savedUser.id, locale ?? Locale.EN);
+		await this.accountService.init(savedUser.id, locale ?? Locale.EN);
+
+		return savedUser;
+	}
+
+	/** Find existing user by Firebase UID or email, or create a new one */
+	async findOrCreateByFirebase(
+		firebaseUser: FirebaseUser,
+		locale?: Locale,
+	): Promise<User> {
+		// 1) Try to find by firebaseUid
+		let user = await this.userRepo.findOne({
+			where: { firebaseUid: firebaseUser.uid },
+		});
+		if (user) {
+			// Update display name and photo if changed
+			let needsUpdate = false;
+			if (
+				firebaseUser.displayName &&
+				user.displayName !== firebaseUser.displayName
+			) {
+				user.displayName = firebaseUser.displayName;
+				needsUpdate = true;
+			}
+			if (
+				firebaseUser.photoURL &&
+				user.photoUrl !== firebaseUser.photoURL
+			) {
+				user.photoUrl = firebaseUser.photoURL;
+				needsUpdate = true;
+			}
+			if (needsUpdate) {
+				user = await this.userRepo.save(user);
+			}
+			return user;
+		}
+
+		// 2) Try to find by email (migration: link existing user)
+		user = await this.userRepo.findOne({
+			where: { email: firebaseUser.email },
+		});
+		if (user) {
+			user.firebaseUid = firebaseUser.uid;
+			if (firebaseUser.displayName) {
+				user.displayName = firebaseUser.displayName;
+			}
+			if (firebaseUser.photoURL) {
+				user.photoUrl = firebaseUser.photoURL;
+			}
+			return this.userRepo.save(user);
+		}
+
+		// 3) Create new user
+		const newUser = this.userRepo.create({
+			email: firebaseUser.email,
+			firebaseUid: firebaseUser.uid,
+			displayName: firebaseUser.displayName ?? null,
+			photoUrl: firebaseUser.photoURL ?? null,
+		});
+		const savedUser = await this.userRepo.save(newUser);
+
+		// Initialize default data
+		await this.categoryService.init(savedUser.id, locale ?? Locale.EN);
+		await this.accountTypeService.init(savedUser.id, locale ?? Locale.EN);
+		await this.accountService.init(savedUser.id, locale ?? Locale.EN);
 
 		return savedUser;
 	}
@@ -71,18 +133,12 @@ export class UserService {
 			}
 		}
 
-		// 3. Hash new password
-		if (dto.password) {
-			toSave.password = await hash(dto.password);
-		}
-
-		// 4. Save
+		// 3. Save
 		return this.userRepo.save(toSave);
 	}
 
 	/**
 	 * Fetch a single user by ID.
-	 * Omits password (select: false) automatically.
 	 */
 	async getOneById(id: string): Promise<User> {
 		const user = await this.userRepo.findOne({
@@ -95,21 +151,22 @@ export class UserService {
 	}
 
 	/**
-	 * Fetch a single user by ID.
-	 * Omits password (select: false) automatically.
+	 * Fetch a single user by email.
 	 */
 	async getOneByEmail(email: string): Promise<User> {
 		const user = await this.userRepo.findOne({
 			where: { email },
-			select: {
-				id: true,
-				password: true,
-				email: true,
-				isActive: true,
-				role: true,
-				createdAt: false,
-				updatedAt: false,
-			},
+		});
+		if (!user) {
+			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);
+		}
+		return user;
+	}
+
+	/** Fetch a single user by Firebase UID */
+	async getOneByFirebaseUid(firebaseUid: string): Promise<User> {
+		const user = await this.userRepo.findOne({
+			where: { firebaseUid },
 		});
 		if (!user) {
 			throw new UnauthorizedException(AuthMessages.USER_NOT_FOUND);

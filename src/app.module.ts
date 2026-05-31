@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import * as jwt from 'jsonwebtoken';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import appConfig from './config/app.config';
@@ -11,11 +9,12 @@ import { envValidationSchema } from './config/env.validation.schema';
 import { AccountTypeModule } from './modules/account-type/account-type.module';
 import { AccountModule } from './modules/account/account.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BudgetModule } from './modules/budget/budget.module';
 import { CategoryModule } from './modules/category/category.module';
+import { FirebaseModule } from './modules/firebase/firebase.module';
 import { IconModule } from './modules/icon/icon.module';
 import { ImportExportModule } from './modules/import-export/import-export.module';
 import { InitModule } from './modules/init/init.module';
-import { KeysModule } from './modules/keys/keys.module';
 import { TransactionModule } from './modules/transaction/transaction.module';
 import { UserModule } from './modules/user/user.module';
 
@@ -26,23 +25,6 @@ import { UserModule } from './modules/user/user.module';
 			load: [appConfig],
 			validationSchema: envValidationSchema,
 		}),
-		JwtModule.registerAsync({
-			imports: [ConfigModule],
-			inject: [ConfigService],
-			useFactory: (configService: ConfigService): JwtModuleOptions => ({
-				secret:
-					configService.get<string>('jwt.privateKey') ||
-					'defaultPrivateKey',
-				signOptions: {
-					// Provide a default value and cast the result as Algorithm
-					algorithm: (configService.get<string>('jwt.algorithm') ||
-						'RS256') as jwt.Algorithm,
-					expiresIn:
-						configService.get<string>('jwt.accessTokenExpiresIn') ||
-						'1h',
-				},
-			}),
-		}),
 		TypeOrmModule.forRootAsync({
 			imports: [ConfigModule],
 			useClass: DatabaseConfigService,
@@ -50,7 +32,8 @@ import { UserModule } from './modules/user/user.module';
 		// ... other modules
 		UserModule,
 		AuthModule,
-		KeysModule,
+		BudgetModule,
+		FirebaseModule,
 		InitModule,
 		AccountTypeModule,
 		CategoryModule,

@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from './common/guards/jwt-auth.guard';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { corsConfig } from './config/cors.config';
 import { setupSwagger } from './config/swagger.config';
@@ -13,8 +13,8 @@ async function bootstrap() {
 	app.useGlobalPipes(globalValidationPipe);
 	app.useGlobalInterceptors(new ResponseInterceptor());
 
-	// Apply JwtAuthGuard to all controllers by default
-	app.useGlobalGuards(app.get(JwtAuthGuard));
+	// Apply FirebaseAuthGuard to all controllers by default
+	app.useGlobalGuards(app.get(FirebaseAuthGuard));
 
 	// Set up Swagger documentation
 	setupSwagger(app);
