@@ -6,6 +6,8 @@ services:
             - '${APP_PORT}:${APP_PORT}'
         env_file:
             - .env
+        volumes:
+            - ./firebase-service-account.json:/app/firebase-service-account.json
         restart: unless-stopped
         mem_limit: 2g # Set max memory to 2 GB
         cpus: 2 # Set max CPU to 2 CPU core
